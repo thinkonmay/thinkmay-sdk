@@ -1,11 +1,9 @@
 import dayjs from 'dayjs';
-import timezone from 'dayjs/plugin/timezone';
 import utc from 'dayjs/plugin/utc'; // import UTC plugin
-import { verifyPayment, wrapperAsyncFunction } from '.';
+import { UserSession } from '../../../src-tauri/api';
 import {
     RootState,
     appDispatch,
-    app_toggle,
     change_bitrate,
     change_framerate,
     check_worker,
@@ -16,7 +14,6 @@ import {
     have_focus,
     loose_focus,
     ping_session,
-    popup_open,
     setting_theme,
     sidepane_panethem,
     store,
@@ -25,8 +22,7 @@ import {
     wall_set,
     worker_refresh
 } from '../reducers';
-import { client } from '../reducers/remote';
-import { UserSession } from '../../../src-tauri/api/analytics';
+import { CLIENT } from '../../../src-tauri/singleton';
 
 const loadSettings = async () => {
     let thm = localStorage.getItem('theme');
@@ -51,13 +47,6 @@ export const fetchUser = async () => {
 
     const stat = store.getState().user.stat;
 
-    appDispatch(app_toggle('usermanager'));
-
-    if (stat.plan_name == 'hour_02' || !stat.plan_name) {
-        appDispatch(app_toggle('store'));
-    } else {
-        appDispatch(app_toggle('connectPc'));
-    }
     checkMaintain();
 };
 const checkMaintain = async () => {
@@ -65,39 +54,45 @@ const checkMaintain = async () => {
     const info = store.getState().globals.maintenance;
 
     dayjs.extend(utc);
-    dayjs.extend(timezone);
+    // appDispatch(app_toggle('usermanager'));
+
+    // if (stat.plan_name == 'hour_02' || !stat.plan_name) {
+    //     appDispatch(app_toggle('store'));
+    // } else {
+    //     appDispatch(app_toggle('connectPc'));
+    // }  dayjs.extend(timezone);
 
     let startAtTime = dayjs.utc(info.created_at);
     let endAtTime = dayjs.utc(info.ended_at);
 
     // Convert to GMT+7
-    let startAt = startAtTime.tz('Asia/Bangkok'); // Bangkok is in GMT+7 timezone
-    let endAt = endAtTime.tz('Asia/Bangkok'); // Bangkok is in GMT+7 timezone
+    // let startAt = startAtTime.tz('Asia/Bangkok'); // Bangkok is in GMT+7 timezone
+    // let endAt = endAtTime.tz('Asia/Bangkok'); // Bangkok is in GMT+7 timezone
 
     // Extract hour, day, and month
-    const hourStart = startAt.hour();
-    const dayStart = startAt.date();
-    const monthStart = startAt.month() + 1;
+    // const hourStart = startAt.hour();
+    // const dayStart = startAt.date();
+    // const monthStart = startAt.month() + 1;
 
-    const startText = `${hourStart}h ${dayStart}/${monthStart}`;
+    // const startText = `${hourStart}h ${dayStart}/${monthStart}`;
 
-    const hourEnd = endAt.hour();
-    const dayEnd = endAt.date();
-    const monthEnd = endAt.month() + 1;
+    // const hourEnd = endAt.hour();
+    // const dayEnd = endAt.date();
+    // const monthEnd = endAt.month() + 1;
 
-    const endText = `${hourEnd}h ${dayEnd}/${monthEnd}`;
+    // const endText = `${hourEnd}h ${dayEnd}/${monthEnd}`;
 
-    if (dayjs() < endAt) {
-        appDispatch(
-            popup_open({
-                type: 'maintain',
-                data: {
-                    start: startText,
-                    end: endText
-                }
-            })
-        );
-    }
+    // if (dayjs() < endAt) {
+    //     appDispatch(
+    //         popup_open({
+    //             type: 'maintain',
+    //             data: {
+    //                 start: startText,
+    //                 end: endText
+    //             }
+    //         })
+    //     );
+    // }
 };
 export const fetchApp = async () => {
     await appDispatch(worker_refresh());
@@ -123,7 +118,7 @@ const fetchSetting = async () => {
 let old_clipboard = '';
 const handleClipboard = async () => {
     try {
-        if (client == null || !client?.ready()) return;
+        if (CLIENT == null || !CLIENT?.ready()) return;
 
         const clipboard = await navigator.clipboard.readText();
         if (!(store.getState() as RootState).remote.focus)
@@ -131,7 +126,7 @@ const handleClipboard = async () => {
         if (clipboard == old_clipboard) return;
 
         old_clipboard = clipboard;
-        client?.SetClipboard(clipboard);
+        CLIENT?.SetClipboard(clipboard);
     } catch {
         if ((store.getState() as RootState).remote.focus)
             appDispatch(loose_focus());
@@ -182,19 +177,7 @@ export const checkTimeUsage = async () => {
     };
 };
 
-const paymentVerify = async () => {
-    await wrapperAsyncFunction(
-        () => verifyPayment(store.getState().user.email),
-        {
-            loading: true,
-            tips: false,
-            title: 'Verify payment!',
-            timeProcessing: 0.1
-        }
-    );
-};
-
-const StartAnalytics = async () => {
+const startAnalytics = async () => {
     await UserSession(store.getState().user.email);
 };
 
@@ -202,8 +185,7 @@ export const preload = async () => {
     try {
         await fetchUser();
         await Promise.allSettled([
-            StartAnalytics(),
-            paymentVerify(),
+            startAnalytics(),
             loadSettings(),
             fetchApp(),
             fetchSetting(),
