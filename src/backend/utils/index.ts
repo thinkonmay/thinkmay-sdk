@@ -1,5 +1,4 @@
 import { MenuOption } from '../reducers/menu';
-import { externalLink } from './constant';
 
 export type AppData = {
     id: string;
@@ -20,42 +19,10 @@ export type AppData = {
 
 const apps: AppData[] = [
     {
-        name: 'Settings',
-        id: 'settings',
-        action: 'apps/app_toggle',
-        payload: 'settings'
-    },
-    {
-        name: 'Worker Profile',
-        id: 'worker',
-        action: 'apps/app_toggle',
-        payload: 'worker'
-    },
-    {
-        name: 'Browser',
-        id: 'edge',
-        action: 'apps/app_toggle',
-        payload: 'edge'
-    },
-    {
-        name: 'Thanh toán',
-        id: 'payment',
-        action: 'apps/app_toggle',
-        payload: 'payment'
-    },
-    {
         name: 'Feedback',
         id: 'feedback',
         action: 'apps/app_toggle',
         payload: 'feedback'
-    },
-
-    {
-        name: 'Game cho gói giờ',
-        id: 'store',
-        action: 'apps/app_toggle',
-        payload: 'store',
-        size: 'mini'
     },
     {
         name: 'Máy tính cá nhân',
@@ -65,58 +32,11 @@ const apps: AppData[] = [
         max: false,
         size: 'mini'
     },
-    {
-        name: 'Hướng dẫn',
-        id: 'hdsd',
-        action: 'apps/app_external',
-        payload: externalLink.GUIDE_VIDEO
-    },
-    //{
-    //    name: 'Guideline',
-    //    id: 'about',
-    //    action: 'apps/app_url',
-    //    payload: 'https://thinkmay.net'
-    //},
-    {
-        name: 'Your Info',
-        id: 'usermanager',
-        action: 'apps/app_toggle',
-        payload: 'usermanager'
-    },
-    {
-        name: 'Discord',
-        id: 'discord',
-        action: 'apps/app_external',
-        payload: externalLink.DISCORD_LINK
-    },
-    {
-        name: 'Thinkmay Fanpage',
-        id: 'facebook',
-        action: 'apps/app_external',
-        payload: externalLink.FACEBOOK_LINK
-    }
 ];
 var { taskbar, desktop } = {
     taskbar: ['Game cho gói giờ'],
-    desktop: window.location.href.includes('localhost')
-        ? [
-              'Worker Profile',
-              'Local Connect',
-              'Discord',
-              'Hướng dẫn',
-              'Thinkmay Fanpage',
-              'Game cho gói giờ',
+    desktop: [
               'Máy tính cá nhân',
-              'Thanh toán'
-          ]
-        : [
-              'Local Connect',
-              'Discord',
-              'Hướng dẫn',
-              'Thinkmay Fanpage',
-              'Game cho gói giờ',
-              'Máy tính cá nhân',
-              'Thanh toán'
           ]
 };
 
