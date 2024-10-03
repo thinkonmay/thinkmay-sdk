@@ -1,12 +1,9 @@
-import { MenuOption } from '../reducers/menu';
-
 export type AppData = {
     id: string;
     name: string;
     action: string;
     payload?: any;
 
-    menu?: MenuOption;
     size?: string;
     ready?: boolean;
     installing?: boolean;

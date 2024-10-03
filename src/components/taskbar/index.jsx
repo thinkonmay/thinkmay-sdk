@@ -16,10 +16,12 @@ import {
 } from '../../backend/reducers';
 import { Contents } from '../../backend/reducers/locales';
 import {
-    clickDispatch
+    clickDispatch,
+    customClickDispatch
 } from '../../backend/utils/dispatch';
 import { Icon } from '../shared/general';
 import './taskbar.scss';
+import { afterMath } from '../../backend/actions';
 
 const Taskbar = () => {
     const t = useAppSelector((state) => state.globals.translation);
@@ -80,6 +82,7 @@ const Taskbar = () => {
         setOpen((old) => !old);
     };
 
+    const customDispatch = customClickDispatch(e => afterMath(e))
     return (
         <>
             {remote.active ? (
@@ -103,32 +106,11 @@ const Taskbar = () => {
 
                     <>
                         <div
-                            className="p-2 prtclk handcr hvlight flex rounded "
-                            onClick={customDispatch}
-                            data-action="sidepane/sidepane_bandtogg"
-                        >
-                            <div
-                                className="text-xm font-semibold"
-                                style={{ color: '#0167c0' }}
-                            >
-                                {t[Contents.SUPPORT]}
-                            </div>
-                        </div>
-                        <div
                             className="prtclk handcr my-1 p-2 hvlight flex gap-[8px] rounded"
                             onClick={customDispatch}
+                            style={{ '--prefix': 'PANE' }}
                             data-action="sidepane_panetogg"
                         >
-                            {remote.connection?.video == 'connected' ? (
-                                <Icon
-                                    className="taskIcon"
-                                    src={
-                                        remote.frame_drop ? 'wifi_low' : 'wifi'
-                                    }
-                                    ui
-                                    width={16}
-                                />
-                            ) : null}
                             <div className="text-xm flex gap-[4px] font-semibold">
                                 <MdOutlineVideoSettings
                                     fontSize={'1.2rem'}

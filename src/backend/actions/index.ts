@@ -102,3 +102,30 @@ export const bindStoreId = async (email: string, store_id: number) => {
         throw error;
     }
 };
+
+export const afterMath = (event: any) => {
+    var ess = [
+        ['START', 'startmenu/starthid', 'startmenu.hide'], // TODO
+        ['BAND', 'sidepane/sidepane_bandhide', 'sidepane.banhide'],
+        ['PANE', 'sidepane/sidepane_panehide', 'sidepane.hide'],
+    ];
+
+    var actionType = '';
+    try {
+        actionType = event.target.dataset.action || '';
+    } catch (err) {}
+
+    var actionType0 = getComputedStyle(event.target).getPropertyValue(
+        '--prefix'
+    );
+
+    const data = store.getState();
+    ess.forEach((item) => {
+        if (
+            !actionType.startsWith(item[0]) &&
+            !actionType0.startsWith(item[0]) &&
+            !getTreeValue(data, item[2])
+        )
+            appDispatch({ type: item[1], payload: {} });
+    });
+};

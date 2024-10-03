@@ -400,51 +400,6 @@ export const ToolBar = (props) => {
                         {props.name}
                     </div>
                 </div>
-                <div className="actbtns flex items-center">
-                    <Icon
-                        invert={props.invert}
-                        click={'apps/app_minimize'}
-                        payload={props.icon}
-                        pr
-                        src="minimize"
-                        ui
-                        width={12}
-                    />
-                    <div
-                        className="snapbox h-full"
-                        data-hv={snap}
-                        onMouseOver={openSnap}
-                        onMouseLeave={closeSnap}
-                    >
-                        <Icon
-                            invert={props.invert}
-                            click={'apps/app_maximize'}
-                            payload={props.icon}
-                            ui
-                            pr
-                            width={12}
-                            src={props.size == 'full' ? 'maximize' : 'maxmin'}
-                        />
-                        <SnapScreen
-                            invert={props.invert}
-                            app={props.app}
-                            snap={snap}
-                            closeSnap={closeSnap}
-                        />
-                    </div>
-                    <Icon
-                        className="closeBtn"
-                        invert={props.invert}
-                        name={props.app}
-                        click={'apps/app_close'}
-                        payload={props.icon}
-                        pr
-                        src="close"
-                        ui
-                        width={14}
-                        isTrack={true}
-                    />
-                </div>
             </div>
             <div className="resizecont topone">
                 <div className="flex">
