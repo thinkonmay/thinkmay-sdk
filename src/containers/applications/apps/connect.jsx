@@ -38,12 +38,6 @@ export const ConnectApp = () => {
             }}
             data-hide={wnapp.hide}
         >
-            <ToolBar
-                app={wnapp.id}
-                icon={wnapp.id}
-                size={wnapp.size}
-                name="Connect to your PC"
-            />
             <div
                 className="windowScreen connectAppContent flex flex-col p-[12px] pt-0"
                 data-dock="true"
