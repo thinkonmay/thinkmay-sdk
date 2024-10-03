@@ -4,7 +4,6 @@ import * as Actions from '../actions/index.js';
 import { appSlice } from './apps';
 import { deskSlice } from './desktop';
 import { globalAsync, globalSlice } from './globals';
-import { menusSlice } from './menu';
 import { modalSlice as popupSlice } from './modal';
 import { remoteAsync, remoteSlice } from './remote.js';
 import { settSlice } from './settings.js';
@@ -41,7 +40,6 @@ export const store = configureStore({
         desktop: deskSlice.reducer,
         startmenu: menuSlice.reducer,
         apps: appSlice.reducer,
-        menus: menusSlice.reducer,
         globals: globalSlice.reducer,
         setting: settSlice.reducer,
         worker: workerSlice.reducer,
@@ -86,7 +84,6 @@ export const {
     app_showdesk,
     app_url
 } = appSlice.actions;
-export const { menu_chng, menu_hide, menu_show } = menusSlice.actions;
 export const { setting_load, setting_setv, setting_theme, setting_togg } =
     settSlice.actions;
 export const { worker_prev, worker_view } = workerSlice.actions;

@@ -8,7 +8,6 @@ import {
     MdOutlineVideoSettings
 } from 'react-icons/md';
 
-import { afterMath } from '../../backend/actions';
 import {
     appDispatch,
     task_hide,
@@ -17,8 +16,7 @@ import {
 } from '../../backend/reducers';
 import { Contents } from '../../backend/reducers/locales';
 import {
-    clickDispatch,
-    customClickDispatch
+    clickDispatch
 } from '../../backend/utils/dispatch';
 import { Icon } from '../shared/general';
 import './taskbar.scss';
@@ -80,11 +78,8 @@ const Taskbar = () => {
 
     const toggleControl = (e) => {
         setOpen((old) => !old);
-
-        afterMath(e);
     };
 
-    const customDispatch = customClickDispatch((e) => afterMath(e));
     return (
         <>
             {remote.active ? (
@@ -111,7 +106,6 @@ const Taskbar = () => {
                             className="p-2 prtclk handcr hvlight flex rounded "
                             onClick={customDispatch}
                             data-action="sidepane/sidepane_bandtogg"
-                            style={{ '--prefix': 'BAND' }}
                         >
                             <div
                                 className="text-xm font-semibold"
@@ -123,7 +117,6 @@ const Taskbar = () => {
                         <div
                             className="prtclk handcr my-1 p-2 hvlight flex gap-[8px] rounded"
                             onClick={customDispatch}
-                            style={{ '--prefix': 'PANE' }}
                             data-action="sidepane_panetogg"
                         >
                             {remote.connection?.video == 'connected' ? (

@@ -11,7 +11,6 @@ import {
 } from '../../../components/shared/general';
 
 import { RenderNode } from '../../../../src-tauri/api';
-import { Contents } from '../../../backend/reducers/locales';
 import './assets/connect.scss';
 export const ConnectApp = () => {
     const t = useAppSelector((state) => state.globals.translation);

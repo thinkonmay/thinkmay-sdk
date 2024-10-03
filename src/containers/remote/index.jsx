@@ -6,7 +6,6 @@ import {
     VideoWrapper
 } from '../../../src-tauri/core';
 import { Assign, CLIENT } from '../../../src-tauri/singleton';
-import { afterMath } from '../../backend/actions';
 import {
     appDispatch,
     set_fullscreen,
@@ -66,7 +65,7 @@ export const Remote = () => {
             <video
                 className="remote"
                 ref={remoteVideo}
-                onClick={relative_mouse ? pointerlock : (e) => afterMath(e)}
+                onClick={relative_mouse ? pointerlock : null}
                 autoPlay
                 muted
                 playsInline

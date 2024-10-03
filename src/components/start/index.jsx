@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { AiOutlineCloudDownload } from 'react-icons/ai';
 import * as fa from 'react-icons/fa';
 import * as fi from 'react-icons/fi';
@@ -8,7 +8,6 @@ import { PiPauseBold } from 'react-icons/pi';
 import * as Actions from '../../backend/actions';
 import { getTreeValue } from '../../backend/actions';
 
-import { useDispatch } from 'react-redux';
 import {
     MAX_BITRATE,
     MAX_FRAMERATE,
@@ -20,7 +19,6 @@ import {
     change_bitrate,
     change_btnGp_size,
     change_framerate,
-    menu_show,
     sidepane_panehide,
     toggle_default_gamepad_position,
     toggle_gamepad,
@@ -29,10 +27,8 @@ import {
     useAppSelector
 } from '../../backend/reducers';
 import {
-    clickDispatch,
-    customClickDispatch
+    clickDispatch
 } from '../../backend/utils/dispatch';
-import { sleep } from '../../backend/utils/sleep';
 import { VirtualGamepad } from '../mobileControl/component/virtGamepad';
 import VirtKeyboard from '../mobileControl/component/virtKeyBoard';
 import { Icon } from '../shared/general';
@@ -45,38 +41,8 @@ export const DesktopApp = () => {
     const deskApps = useAppSelector((state) =>
         state.apps.apps.filter((x) => state.desktop.apps.includes(x.id))
     );
+
     const desk = useAppSelector((state) => state.desktop);
-    const [holding, setHolding] = useState(false);
-    const timeoutRef = useRef(null);
-    const lastTap = useRef(null);
-
-    const dispatch = useDispatch();
-
-    const handleTouchStart = (e) => {
-        return;
-        Actions.afterMath(e);
-        timeoutRef.current = setTimeout(() => {
-            setHolding(true);
-            e.preventDefault();
-            var touch = e.touches[0] || e.changedTouches[0];
-
-            var data = {
-                top: touch.clientY,
-                left: touch.clientX
-            };
-            data.menu = e.target.dataset.menu;
-            data.dataset = { ...e.target.dataset };
-            dispatch(menu_show(data));
-        }, 300); // 1000 milliseconds = 1 second
-    };
-
-    const handleTouchEnd = async (e) => {
-        //clearTimeout(timeoutRef.current);
-        await sleep(200);
-        clickDispatch(e);
-    };
-    const handleDouble = customClickDispatch((e) => e.stopPropagation());
-
     return (
         <div className="desktopCont">
             {!desk.hide &&
@@ -91,15 +57,11 @@ export const DesktopApp = () => {
                             data-payload={app.payload || 'full'}
                             data-id={app.id ?? 'null'}
                             data-name={app.name}
-                            onDoubleClick={handleDouble}
-                            onTouchStart={handleTouchStart}
-                            onTouchEnd={handleTouchEnd}
                         >
                             <Icon
                                 className="dskIcon "
                                 click={'null'}
                                 src={app.id}
-                                // mono={!(app.ready ?? true)}
                                 pr
                                 width={Math.round(desk.size * 36)}
                             />

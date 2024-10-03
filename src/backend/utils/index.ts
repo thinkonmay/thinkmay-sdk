@@ -19,12 +19,6 @@ export type AppData = {
 
 const apps: AppData[] = [
     {
-        name: 'Feedback',
-        id: 'feedback',
-        action: 'apps/app_toggle',
-        payload: 'feedback'
-    },
-    {
         name: 'Máy tính cá nhân',
         id: 'connectPc',
         action: 'apps/app_toggle',
@@ -34,15 +28,13 @@ const apps: AppData[] = [
     },
 ];
 var { taskbar, desktop } = {
-    taskbar: ['Game cho gói giờ'],
-    desktop: [
-              'Máy tính cá nhân',
-          ]
+    taskbar: [],
+    desktop: [ 'Máy tính cá nhân', ]
 };
 
 apps.map((x) => {
-    x.size = x.size ?? 'full';
-    x.hide = true;
+    x.size = 'full';
+    x.hide = false;
     x.max = x.max ?? null;
     x.z = 0;
 });

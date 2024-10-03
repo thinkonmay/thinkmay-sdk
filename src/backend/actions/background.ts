@@ -1,6 +1,5 @@
-import dayjs from 'dayjs';
-import utc from 'dayjs/plugin/utc'; // import UTC plugin
 import { UserSession } from '../../../src-tauri/api';
+import { CLIENT } from '../../../src-tauri/singleton';
 import {
     RootState,
     appDispatch,
@@ -9,7 +8,6 @@ import {
     check_worker,
     fetch_message,
     fetch_store,
-    fetch_under_maintenance,
     fetch_user,
     have_focus,
     loose_focus,
@@ -22,7 +20,6 @@ import {
     wall_set,
     worker_refresh
 } from '../reducers';
-import { CLIENT } from '../../../src-tauri/singleton';
 
 const loadSettings = async () => {
     let thm = localStorage.getItem('theme');
@@ -44,56 +41,8 @@ const loadSettings = async () => {
 
 export const fetchUser = async () => {
     await appDispatch(fetch_user());
-
-    const stat = store.getState().user.stat;
-
-    checkMaintain();
 };
-const checkMaintain = async () => {
-    await appDispatch(fetch_under_maintenance());
-    const info = store.getState().globals.maintenance;
 
-    dayjs.extend(utc);
-    // appDispatch(app_toggle('usermanager'));
-
-    // if (stat.plan_name == 'hour_02' || !stat.plan_name) {
-    //     appDispatch(app_toggle('store'));
-    // } else {
-    //     appDispatch(app_toggle('connectPc'));
-    // }  dayjs.extend(timezone);
-
-    let startAtTime = dayjs.utc(info.created_at);
-    let endAtTime = dayjs.utc(info.ended_at);
-
-    // Convert to GMT+7
-    // let startAt = startAtTime.tz('Asia/Bangkok'); // Bangkok is in GMT+7 timezone
-    // let endAt = endAtTime.tz('Asia/Bangkok'); // Bangkok is in GMT+7 timezone
-
-    // Extract hour, day, and month
-    // const hourStart = startAt.hour();
-    // const dayStart = startAt.date();
-    // const monthStart = startAt.month() + 1;
-
-    // const startText = `${hourStart}h ${dayStart}/${monthStart}`;
-
-    // const hourEnd = endAt.hour();
-    // const dayEnd = endAt.date();
-    // const monthEnd = endAt.month() + 1;
-
-    // const endText = `${hourEnd}h ${dayEnd}/${monthEnd}`;
-
-    // if (dayjs() < endAt) {
-    //     appDispatch(
-    //         popup_open({
-    //             type: 'maintain',
-    //             data: {
-    //                 start: startText,
-    //                 end: endText
-    //             }
-    //         })
-    //     );
-    // }
-};
 export const fetchApp = async () => {
     await appDispatch(worker_refresh());
 };

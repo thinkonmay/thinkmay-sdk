@@ -4,11 +4,10 @@ import ReactModal from 'react-modal';
 import { UserEvents } from '../src-tauri/api';
 import { isMobile } from '../src-tauri/core';
 import { preload } from './backend/actions/background';
-import { afterMath } from './backend/actions/index';
 import {
+    app_toggle,
     appDispatch,
     direct_access,
-    menu_show,
     pointer_lock,
     set_fullscreen,
     useAppSelector
@@ -40,20 +39,7 @@ function App() {
     );
 
     const ctxmenu = (e) => {
-        afterMath(e);
         e.preventDefault();
-        var data = {
-            top: e.clientY,
-            left: e.clientX
-        };
-
-        if (e.target.dataset.menu != null) {
-            data.menu = e.target.dataset.menu;
-            data.dataset = { ...e.target.dataset };
-            if (data.menu == 'desk' && remote.active) return;
-
-            appDispatch(menu_show(data));
-        }
     };
 
     const [loadingText, setloadingText] = useState(Contents.BOOTING);
@@ -92,6 +78,7 @@ function App() {
             UserEvents({ type: 'preload/finish', payload: { interval } });
             if (isMobile()) await waitForPhoneRotation();
             setLockscreen(false);
+            appDispatch(app_toggle('connectPc'))
         });
     }, []);
 
@@ -126,9 +113,6 @@ function App() {
             window.oncontextmenu = (ev) => ev.preventDefault();
         } else {
             window.oncontextmenu = ctxmenu;
-            window.onclick = (e) => {
-                afterMath(e);
-            };
         }
 
         const job = remote.fullscreen ? fullscreen() : exitfullscreen();
@@ -199,7 +183,6 @@ function App() {
                     )}
                     {!remote.active ? (
                         <div className="desktop" data-menu="desk">
-                            <DesktopApp />
                             {Object.keys(Applications).map((key, idx) => {
                                 var WinApp = Applications[key];
                                 return <WinApp key={idx} />;
