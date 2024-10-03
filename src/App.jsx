@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { ErrorBoundary } from 'react-error-boundary';
 import ReactModal from 'react-modal';
 import { UserEvents } from '../src-tauri/api';
+import { isMobile } from '../src-tauri/core';
 import { preload } from './backend/actions/background';
 import { afterMath } from './backend/actions/index';
 import {
@@ -13,19 +14,16 @@ import {
     useAppSelector
 } from './backend/reducers';
 import { Contents } from './backend/reducers/locales';
-import ActMenu from './components/menu';
 import {
     DesktopApp,
     LogMaintain,
     SidePane,
     StartMenu
 } from './components/start';
-import { WidPane } from './components/start/widget';
 import Taskbar from './components/taskbar';
 import * as Applications from './containers/applications';
 import { Background, BootScreen, LockScreen } from './containers/background';
 import Popup from './containers/popup';
-import { isMobile } from '../src-tauri/core';
 import { Remote } from './containers/remote';
 import { Status } from './containers/status';
 import { ErrorFallback } from './error';
@@ -185,8 +183,6 @@ function App() {
                     {pointerLock ? null : (
                         <>
                             <Taskbar />
-                            <ActMenu />
-                            <WidPane />
                             <StartMenu />
                             <SidePane />
                             <Popup />
@@ -195,8 +191,8 @@ function App() {
 
                     {remote.active ? (
                         <>
-                            <Remote />
                             <Status />
+                            <Remote />
                         </>
                     ) : (
                         <Background />
