@@ -23,7 +23,7 @@ export const ConnectApp = () => {
             !state.globals.maintenance?.isMaintaining
     );
 
-    const {email}= useAppSelector((state) => state.user);
+    const [email]= useAppSelector((state) => state.user.email.split('@'));
     const connect = () => appDispatch(wait_and_claim_volume());
     const pay = () => appDispatch(app_toggle('payment'));
     return (
