@@ -225,7 +225,9 @@ export const remoteAsync = {
         'direct_access',
         async ({ ref }: { ref: string }) => {
             try {
-                const resp = await fetch(`${getDomainURL()}/api/collections/reference/records?page=1&perPage=1&filter=token="${ref}"&skipTotal=1`, {
+                const resp = await fetch(
+                    `${getDomainURL()}/api/collections/reference/records?page=1&perPage=1&filter=token="${ref}"&skipTotal=1`,
+                    {
                         method: 'GET',
                         headers: {
                             Authorization: POCKETBASE.authStore.token,
@@ -322,7 +324,9 @@ export const remoteSlice = createSlice({
             const token = state.ref;
             if (token == undefined) return;
 
-            navigator.clipboard.writeText(`${window.location.origin}/?ref=${token}`);
+            navigator.clipboard.writeText(
+                `${window.location.origin}/?ref=${token}`
+            );
         },
         loose_focus: (state) => {
             state.focus = false;

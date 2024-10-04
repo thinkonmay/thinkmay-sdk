@@ -22,11 +22,11 @@ const apps: AppData[] = [
         payload: 'connectPc',
         max: false,
         size: 'mini'
-    },
+    }
 ];
 var { taskbar, desktop } = {
     taskbar: [],
-    desktop: [ 'Máy tính cá nhân', ]
+    desktop: ['Máy tính cá nhân']
 };
 
 apps.map((x) => {

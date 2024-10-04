@@ -26,9 +26,7 @@ import {
     toggle_gamepad_setting,
     useAppSelector
 } from '../../backend/reducers';
-import {
-    clickDispatch
-} from '../../backend/utils/dispatch';
+import { clickDispatch } from '../../backend/utils/dispatch';
 import { VirtualGamepad } from '../mobileControl/component/virtGamepad';
 import VirtKeyboard from '../mobileControl/component/virtKeyBoard';
 import { Icon } from '../shared/general';
@@ -77,7 +75,6 @@ export const SidePane = () => {
             `linear-gradient(90deg, var(--clrPrm) ${e - 3}%, #888888 ${e}%)`
         );
     }
-
 
     useEffect(() => {
         var tmp = [];

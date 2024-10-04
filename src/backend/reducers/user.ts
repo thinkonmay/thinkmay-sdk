@@ -46,21 +46,18 @@ export const userSlice = createSlice({
         }
     },
     extraReducers: (builder) => {
-        BuilderHelper<Data, any, any>(
-            builder,
-            {
-                fetch: userAsync.fetch_user,
-                hander: (state, action) => {
-                    state.id = action.payload.id;
-                    state.collectionId = action.payload.collectionId;
-                    state.collectionName = action.payload.collectionName;
-                    state.created = action.payload.created;
-                    state.updated = action.payload.updated;
-                    state.expand = action.payload.expand;
-                    state.email = action.payload.email;
-                    state.stat = action.payload.stat;
-                }
+        BuilderHelper<Data, any, any>(builder, {
+            fetch: userAsync.fetch_user,
+            hander: (state, action) => {
+                state.id = action.payload.id;
+                state.collectionId = action.payload.collectionId;
+                state.collectionName = action.payload.collectionName;
+                state.created = action.payload.created;
+                state.updated = action.payload.updated;
+                state.expand = action.payload.expand;
+                state.email = action.payload.email;
+                state.stat = action.payload.stat;
             }
-        );
+        });
     }
 });

@@ -14,10 +14,7 @@ import {
     useAppSelector
 } from './backend/reducers';
 import { Contents } from './backend/reducers/locales';
-import {
-    LogMaintain,
-    SidePane
-} from './components/start';
+import { SidePane } from './components/start';
 import Taskbar from './components/taskbar';
 import { Background, BootScreen, LockScreen } from './containers/background';
 import Popup from './containers/popup';
@@ -35,9 +32,6 @@ function App() {
     const user = useAppSelector((state) => state.user);
     const pointerLock = useAppSelector((state) => state.remote.pointer_lock);
     const [booting, setLockscreen] = useState(true);
-    const isMaintaining = useAppSelector(
-        (state) => state.globals.maintenance?.isMaintaining
-    );
 
     const ctxmenu = (e) => {
         e.preventDefault();
@@ -79,8 +73,6 @@ function App() {
             UserEvents({ type: 'preload/finish', payload: { interval } });
             if (isMobile()) await waitForPhoneRotation();
             setLockscreen(false);
-            appDispatch(update_language('VN'))
-            appDispatch(setting_theme('light'))
         });
     }, []);
 
@@ -174,15 +166,8 @@ function App() {
                             <Popup />
                         </>
                     )}
-
-                    {remote.active ? (
-                            <Remote />
-                    ) : (
-                        <Background />
-                    )}
-                    <div className="desktop" data-menu="desk"> </div>
+                    {remote.active ? <Remote /> : <Background />}
                 </div>
-                {isMaintaining ? <LogMaintain /> : null}
             </ErrorBoundary>
         </div>
     );

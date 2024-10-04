@@ -14,8 +14,6 @@ import {
 } from '../reducers/index';
 import { keyboardCallback } from '../reducers/remote';
 
-
-
 export const getTreeValue = (obj: any, path: any) => {
     if (path == null) return false;
 
@@ -99,7 +97,7 @@ export const afterMath = (event: any) => {
     var ess = [
         ['START', 'startmenu/starthid', 'startmenu.hide'], // TODO
         ['BAND', 'sidepane/sidepane_bandhide', 'sidepane.banhide'],
-        ['PANE', 'sidepane/sidepane_panehide', 'sidepane.hide'],
+        ['PANE', 'sidepane/sidepane_panehide', 'sidepane.hide']
     ];
 
     var actionType = '';

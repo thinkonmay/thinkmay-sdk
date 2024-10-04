@@ -14,6 +14,7 @@ import {
     sidepane_panethem,
     store,
     sync,
+    update_language,
     wall_set,
     worker_refresh
 } from '../reducers';
@@ -34,6 +35,7 @@ const loadSettings = async () => {
     appDispatch(setting_theme(thm));
     appDispatch(sidepane_panethem(icon));
     appDispatch(wall_set(thm == 'light' ? 0 : 1));
+    appDispatch(update_language('VN'));
 };
 
 export const fetchUser = async () => {
@@ -90,7 +92,7 @@ export const preload = async () => {
             startAnalytics(),
             loadSettings(),
             fetchApp(),
-            fetchSetting(),
+            fetchSetting()
         ]);
     } catch (e) {
         console.log(`error ${e} in preload function`);
