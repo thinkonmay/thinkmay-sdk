@@ -27,15 +27,11 @@ import './wnapp.scss';
 function App() {
     ReactModal.setAppElement('#root');
     const remote = useAppSelector((x) => x.remote);
-    const user = useAppSelector((state) => state.user);
     const pointerLock = useAppSelector((state) => state.remote.pointer_lock);
-    const [booting, setLockscreen] = useState(true);
 
     const ctxmenu = (e) => {
         e.preventDefault();
     };
-
-    const [loadingText, setloadingText] = useState(Contents.BOOTING);
 
     useEffect(() => {
         const url = new URL(window.location.href);
@@ -51,16 +47,6 @@ function App() {
             };
         }
 
-        const waitForPhoneRotation = async () => {
-            const finish_fetch = now();
-            while (
-                window.screen.width < window.screen.height &&
-                !(now() - finish_fetch > 2 * 1000)
-            ) {
-                setloadingText(Contents.ROTATE_PHONE);
-                await new Promise((r) => setTimeout(r, 100));
-            }
-        };
 
         const now = () => new Date().getTime();
         const start_fetch = now();
@@ -69,8 +55,6 @@ function App() {
             const finish_fetch = now();
             const interval = finish_fetch - start_fetch;
             UserEvents({ type: 'preload/finish', payload: { interval } });
-            if (isMobile()) await waitForPhoneRotation();
-            setLockscreen(false);
         });
     }, []);
 
