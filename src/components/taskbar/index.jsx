@@ -28,6 +28,12 @@ const Taskbar = () => {
         setOpen((old) => !old);
     };
 
+    const loginPassword = () => {
+        login(prompt('enter login method: google or password')).catch(e => {
+            alert('Invalid login '+ e.message)
+        })
+    }
+
     return (
         <>
             <div
@@ -50,7 +56,7 @@ const Taskbar = () => {
                     <>
                         <div
                             className="prtclk handcr my-1 p-2 hvlight flex gap-[8px] rounded"
-                            onClick={() => login('google')}
+                            onClick={loginPassword}
                             style={{ '--prefix': 'PANE' }}
                             data-action="user/user_delete"
                         >

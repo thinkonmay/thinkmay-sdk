@@ -41,15 +41,18 @@ export const dispatchOutSide = (action: string, payload: any) => {
     appDispatch({ type: action, payload });
 };
 
-export const login = async (provider: 'google' | 'facebook' | 'discord') => {
-    let w = window.open();
+export const login = async (provider: 'google' | 'facebook' | 'discord' | 'password') => {
+    const collection = POCKETBASE.collection('users')
 
     const {
         record: { id }
-    } = await POCKETBASE.collection('users').authWithOAuth2({
-        provider: 'google',
+    } = provider == 'password' 
+    ? await collection.authWithPassword(
+        prompt('Enter your username'),
+        prompt('Enter your password')
+    ) : await collection.authWithOAuth2({ provider,
         urlCallback: (url) => {
-            w.location.href = url;
+            window.open().location.href = url;
         }
     });
     const record = await POCKETBASE.collection('users').getOne(id);
