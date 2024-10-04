@@ -4,11 +4,12 @@ import {
     MdArrowBackIos,
     MdArrowForwardIos,
     MdComputer,
-    MdLogout,
     MdLogin,
+    MdLogout,
     MdOutlineVideoSettings
 } from 'react-icons/md';
 
+import { login } from '../../backend/actions';
 import {
     appDispatch,
     useAppSelector,
@@ -17,11 +18,11 @@ import {
 import { Contents } from '../../backend/reducers/locales';
 import { clickDispatch } from '../../backend/utils/dispatch';
 import './taskbar.scss';
-import { login } from '../../backend/actions';
 
 const Taskbar = () => {
     const t = useAppSelector((state) => state.globals.translation);
-    const user = useAppSelector((state) => state.user);
+    const id = useAppSelector((state) => state.user.id);
+    const active = useAppSelector((state) => state.remote.active);
     const [open, setOpen] = useState(true);
     const toggleControl = (e) => {
         setOpen((old) => !old);
@@ -45,8 +46,8 @@ const Taskbar = () => {
                     )}
                 </button>
 
-                {user.id == 'unknown' 
-                    ?  <>
+                {id == 'unknown' ? (
+                    <>
                         <div
                             className="prtclk handcr my-1 p-2 hvlight flex gap-[8px] rounded"
                             onClick={() => login('google')}
@@ -59,7 +60,8 @@ const Taskbar = () => {
                             </div>
                         </div>
                     </>
-                    : <>
+                ) : !active ? (
+                    <>
                         <div
                             className="prtclk handcr my-1 p-2 hvlight flex gap-[8px] rounded"
                             onClick={clickDispatch}
@@ -81,7 +83,8 @@ const Taskbar = () => {
                                 Connect
                             </div>
                         </div>
-                    </>}
+                    </>
+                ) : null}
                 <div
                     className="prtclk handcr my-1 p-2 hvlight flex gap-[8px] rounded"
                     onClick={clickDispatch}

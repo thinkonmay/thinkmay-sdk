@@ -1,8 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { ErrorBoundary } from 'react-error-boundary';
 import ReactModal from 'react-modal';
 import { UserEvents } from '../src-tauri/api';
-import { isMobile } from '../src-tauri/core';
 import { preload } from './backend/actions/background';
 import {
     appDispatch,
@@ -11,7 +10,6 @@ import {
     set_fullscreen,
     useAppSelector
 } from './backend/reducers';
-import { Contents } from './backend/reducers/locales';
 import { SidePane } from './components/start';
 import Taskbar from './components/taskbar';
 import { Background } from './containers/background';
@@ -46,7 +44,6 @@ function App() {
                 return text;
             };
         }
-
 
         const now = () => new Date().getTime();
         const start_fetch = now();
@@ -108,9 +105,7 @@ function App() {
         return () => clearInterval(UIStateLoop);
     }, [remote.fullscreen]);
 
-    const exitpointerlock = () => {
-        document.exitPointerLock();
-    };
+    const exitpointerlock = () => document.exitPointerLock();
 
     useEffect(() => {
         const handleState = () => {
