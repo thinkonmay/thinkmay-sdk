@@ -25,6 +25,9 @@ import { Remote } from './containers/remote';
 import { Status } from './containers/status';
 import { ErrorFallback } from './error';
 import './index.css';
+import './tabs.scss';
+import './tabs2.scss';
+import './wnapp.scss';
 
 function App() {
     ReactModal.setAppElement('#root');
