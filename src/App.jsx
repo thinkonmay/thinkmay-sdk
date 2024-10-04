@@ -9,14 +9,12 @@ import {
     direct_access,
     pointer_lock,
     set_fullscreen,
-    setting_theme,
-    update_language,
     useAppSelector
 } from './backend/reducers';
 import { Contents } from './backend/reducers/locales';
 import { SidePane } from './components/start';
 import Taskbar from './components/taskbar';
-import { Background, BootScreen, LockScreen } from './containers/background';
+import { Background } from './containers/background';
 import Popup from './containers/popup';
 import { Remote } from './containers/remote';
 import { Status } from './containers/status';
@@ -155,8 +153,6 @@ function App() {
     return (
         <div className="App">
             <ErrorBoundary FallbackComponent={ErrorFallback}>
-                {booting ? <BootScreen loadingText={loadingText} /> : null}
-                {user.id == 'unknown' && !remote.active ? <LockScreen /> : null}
                 <div className="appwrap ">
                     {pointerLock ? null : (
                         <>

@@ -5,6 +5,7 @@ import {
     MdArrowForwardIos,
     MdComputer,
     MdLogout,
+    MdLogin,
     MdOutlineVideoSettings
 } from 'react-icons/md';
 
@@ -16,9 +17,11 @@ import {
 import { Contents } from '../../backend/reducers/locales';
 import { clickDispatch } from '../../backend/utils/dispatch';
 import './taskbar.scss';
+import { login } from '../../backend/actions';
 
 const Taskbar = () => {
     const t = useAppSelector((state) => state.globals.translation);
+    const user = useAppSelector((state) => state.user);
     const [open, setOpen] = useState(true);
     const toggleControl = (e) => {
         setOpen((old) => !old);
@@ -41,27 +44,44 @@ const Taskbar = () => {
                         ></MdArrowBackIos>
                     )}
                 </button>
-                <div
-                    className="prtclk handcr my-1 p-2 hvlight flex gap-[8px] rounded"
-                    onClick={clickDispatch}
-                    style={{ '--prefix': 'PANE' }}
-                    data-action="user/user_delete"
-                >
-                    <div className="text-xm flex gap-[4px] font-semibold">
-                        <MdComputer fontSize={'1.2rem'}></MdComputer>
-                        Logout
-                    </div>
-                </div>
-                <div
-                    className="prtclk handcr my-1 p-2 hvlight flex gap-[8px] rounded"
-                    onClick={() => appDispatch(wait_and_claim_volume())}
-                    data-action="worker/wait_and_claim_volume"
-                >
-                    <div className="text-xm flex gap-[4px] font-semibold">
-                        <MdLogout fontSize={'1.2rem'}></MdLogout>
-                        Connect
-                    </div>
-                </div>
+
+                {user.id == 'unknown' 
+                    ?  <>
+                        <div
+                            className="prtclk handcr my-1 p-2 hvlight flex gap-[8px] rounded"
+                            onClick={() => login('google')}
+                            style={{ '--prefix': 'PANE' }}
+                            data-action="user/user_delete"
+                        >
+                            <div className="text-xm flex gap-[4px] font-semibold">
+                                <MdLogin fontSize={'1.2rem'}></MdLogin>
+                                Login
+                            </div>
+                        </div>
+                    </>
+                    : <>
+                        <div
+                            className="prtclk handcr my-1 p-2 hvlight flex gap-[8px] rounded"
+                            onClick={clickDispatch}
+                            style={{ '--prefix': 'PANE' }}
+                            data-action="user/user_delete"
+                        >
+                            <div className="text-xm flex gap-[4px] font-semibold">
+                                <MdComputer fontSize={'1.2rem'}></MdComputer>
+                                Logout
+                            </div>
+                        </div>
+                        <div
+                            className="prtclk handcr my-1 p-2 hvlight flex gap-[8px] rounded"
+                            onClick={() => appDispatch(wait_and_claim_volume())}
+                            data-action="worker/wait_and_claim_volume"
+                        >
+                            <div className="text-xm flex gap-[4px] font-semibold">
+                                <MdLogout fontSize={'1.2rem'}></MdLogout>
+                                Connect
+                            </div>
+                        </div>
+                    </>}
                 <div
                     className="prtclk handcr my-1 p-2 hvlight flex gap-[8px] rounded"
                     onClick={clickDispatch}

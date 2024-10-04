@@ -41,9 +41,6 @@ export const dispatchOutSide = (action: string, payload: any) => {
     appDispatch({ type: action, payload });
 };
 
-export const loginWithEmail = async (email: string, password: string) => {};
-
-export const signUpWithEmail = async (email: string, password: string) => {};
 export const login = async (provider: 'google' | 'facebook' | 'discord') => {
     let w = window.open();
 
