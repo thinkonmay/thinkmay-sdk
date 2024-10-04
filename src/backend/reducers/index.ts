@@ -1,13 +1,11 @@
 import { ThunkMiddleware, configureStore } from '@reduxjs/toolkit';
 import * as actions from '.';
 import * as Actions from '../actions/index.js';
-import { appSlice } from './apps';
 import { globalAsync, globalSlice } from './globals';
 import { modalSlice as popupSlice } from './modal';
 import { remoteAsync, remoteSlice } from './remote.js';
 import { settSlice } from './settings.js';
 import { sidepaneAsync, sidepaneSlice } from './sidepane';
-import { menuSlice } from './startmenu';
 import { taskSlice } from './taskbar';
 import { userAsync, userSlice } from './user';
 import { wallSlice } from './wallpaper';
@@ -36,8 +34,6 @@ export const store = configureStore({
         user: userSlice.reducer,
         wallpaper: wallSlice.reducer,
         taskbar: taskSlice.reducer,
-        startmenu: menuSlice.reducer,
-        apps: appSlice.reducer,
         globals: globalSlice.reducer,
         setting: settSlice.reducer,
         worker: workerSlice.reducer,
@@ -57,23 +53,6 @@ export const { wall_next, wall_set, wall_lock, wall_unlock } =
     wallSlice.actions;
 export const { task_audo, task_hide, task_show, task_toggle } =
     taskSlice.actions;
-export const {
-    startall,
-    startalpha,
-    starthid,
-    startogg,
-    startpwc,
-    startshw,
-    startsrc
-} = menuSlice.actions;
-export const {
-    app_toggle,
-    app_add,
-    app_close,
-    app_external,
-    app_showdesk,
-    app_url
-} = appSlice.actions;
 export const { setting_load, setting_setv, setting_theme, setting_togg } =
     settSlice.actions;
 export const { worker_prev, worker_view } = workerSlice.actions;

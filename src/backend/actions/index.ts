@@ -95,7 +95,6 @@ export const bindStoreId = async (email: string, store_id: number) => {
 
 export const afterMath = (event: any) => {
     var ess = [
-        ['START', 'startmenu/starthid', 'startmenu.hide'], // TODO
         ['BAND', 'sidepane/sidepane_bandhide', 'sidepane.banhide'],
         ['PANE', 'sidepane/sidepane_panehide', 'sidepane.hide']
     ];
