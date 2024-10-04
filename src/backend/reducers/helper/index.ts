@@ -8,7 +8,7 @@ import {
 
 import Dexie, { Table } from 'dexie';
 import { appDispatch, popup_close, popup_open } from '..';
-import { formatError } from '../../utils/formatErr';
+import { formatError } from '../../utils/error';
 class TodoDB extends Dexie {
     data!: Table<{ timestamp: number; id: string; raw: any }, string>;
     constructor() {

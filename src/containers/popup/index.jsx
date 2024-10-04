@@ -1,7 +1,5 @@
 import ReactModal from 'react-modal';
 import {
-    appDispatch,
-    popup_close,
     useAppSelector
 } from '../../backend/reducers';
 import './index.scss';
@@ -18,11 +16,7 @@ const Popup = () => {
             : undefined
     );
 
-    const closeModal = () => {
-        popup.type == 'complete' || popup.type == 'maintain'
-            ? appDispatch(popup_close())
-            : null;
-    };
+    const closeModal = () => { };
     return (
         <>
             {popup != undefined ? (
@@ -32,11 +26,7 @@ const Popup = () => {
                     className="modalContent "
                     overlayClassName="modalOverlay"
                     onRequestClose={closeModal}
-                    style={
-                        popup.type == 'guidance'
-                            ? { 'backdrop-filter': '' }
-                            : { 'backdrop-filter': 'blur(3px) brightness(0.5)' }
-                    }
+                    style={ { 'backdrop-filter': 'blur(3px) brightness(0.5)' } }
                 >
                     <div className="selectText d-flex overflow-auto min-h-full">
                         {Object.keys(modals)

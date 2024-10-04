@@ -7,12 +7,6 @@ type PopupData =
           };
       }
     | {
-          type: 'guidance';
-          data: {
-              content: string;
-          };
-      }
-    | {
           type: 'notify';
           data: {
               title?: string;
@@ -20,22 +14,6 @@ type PopupData =
               tips?: boolean;
               text?: any;
               timeProcessing?: number;
-          };
-      }
-    | {
-          type: 'warning';
-          data: {
-              title?: string;
-              loading: boolean;
-              tips?: boolean;
-              text?: any;
-          };
-      }
-    | {
-          type: 'maintain';
-          data: {
-              start: string;
-              end: string;
           };
       };
 
