@@ -35,7 +35,6 @@ import { Icon } from '../shared/general';
 import './searchpane.scss';
 import './sidepane.scss';
 import './startmenu.scss';
-export * from './start';
 
 export const SidePane = () => {
     const sidepane = useAppSelector((state) => state.sidepane);
@@ -79,14 +78,6 @@ export const SidePane = () => {
         );
     }
 
-    useEffect(() => {
-        //sidepane.quicks.map((item, i) => {
-        //    if (item.src == 'nightlight') {
-        //        if (pnstates[i]) document.body.dataset.sepia = true;
-        //        else document.body.dataset.sepia = false;
-        //    }
-        //});
-    });
 
     useEffect(() => {
         var tmp = [];
@@ -119,9 +110,7 @@ export const SidePane = () => {
                 <div className="mainContent">
                     <div className="quickSettings ">
                         {isMobile ? (
-                            <MobileComponent
-                                pnstates={pnstates}
-                            ></MobileComponent>
+                            <MobileComponent pnstates={pnstates} />
                         ) : (
                             <DesktopComponent pnstates={pnstates} />
                         )}
@@ -138,7 +127,6 @@ export const SidePane = () => {
                                 </p>
 
                                 <div className="sliderName">
-                                    {/*{t[Contents.QUALITY]}*/}
                                     Bitrate:
                                     <span>
                                         {Math.round(
@@ -194,12 +182,6 @@ export const SidePane = () => {
                     </div>
                     <GamePadSetting></GamePadSetting>
                 </div>
-
-                {/*<div className="p-1 bottomBar">
-                    <div className="px-3 battery-sidepane">
-                        <Battery pct />
-                    </div>
-                </div>*/}
             </div>
             {isMobile ? (
                 <>

@@ -5,21 +5,20 @@ import { UserEvents } from '../src-tauri/api';
 import { isMobile } from '../src-tauri/core';
 import { preload } from './backend/actions/background';
 import {
-    app_toggle,
     appDispatch,
     direct_access,
     pointer_lock,
     set_fullscreen,
+    setting_theme,
+    update_language,
     useAppSelector
 } from './backend/reducers';
 import { Contents } from './backend/reducers/locales';
 import {
     LogMaintain,
-    SidePane,
-    StartMenu
+    SidePane
 } from './components/start';
 import Taskbar from './components/taskbar';
-import * as Applications from './containers/applications';
 import { Background, BootScreen, LockScreen } from './containers/background';
 import Popup from './containers/popup';
 import { Remote } from './containers/remote';
@@ -77,7 +76,8 @@ function App() {
             UserEvents({ type: 'preload/finish', payload: { interval } });
             if (isMobile()) await waitForPhoneRotation();
             setLockscreen(false);
-            appDispatch(app_toggle('connectPc'))
+            appDispatch(update_language('VN'))
+            appDispatch(setting_theme('light'))
         });
     }, []);
 
@@ -166,28 +166,18 @@ function App() {
                     {pointerLock ? null : (
                         <>
                             <Taskbar />
-                            <StartMenu />
+                            <Status />
                             <SidePane />
                             <Popup />
                         </>
                     )}
 
                     {remote.active ? (
-                        <>
-                            <Status />
                             <Remote />
-                        </>
                     ) : (
                         <Background />
                     )}
-                    {!remote.active ? (
-                        <div className="desktop" data-menu="desk">
-                            {Object.keys(Applications).map((key, idx) => {
-                                var WinApp = Applications[key];
-                                return <WinApp key={idx} />;
-                            })}
-                        </div>
-                    ) : null}
+                    <div className="desktop" data-menu="desk"> </div>
                 </div>
                 {isMaintaining ? <LogMaintain /> : null}
             </ErrorBoundary>
