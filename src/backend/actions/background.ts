@@ -6,8 +6,6 @@ import {
     change_bitrate,
     change_framerate,
     check_worker,
-    fetch_message,
-    fetch_store,
     fetch_user,
     have_focus,
     loose_focus,
@@ -16,7 +14,6 @@ import {
     sidepane_panethem,
     store,
     sync,
-    user_check_sub,
     wall_set,
     worker_refresh
 } from '../reducers';
@@ -82,50 +79,6 @@ const handleClipboard = async () => {
     }
 };
 
-const fetchMessage = async () => {
-    const email = store.getState().user.email;
-    await appDispatch(fetch_message(email));
-};
-
-const fetchStore = async () => {
-    await appDispatch(fetch_store());
-};
-export const checkTimeUsage = async () => {
-    const subInfo = store.getState().user?.stat;
-
-    const totalTime = +(subInfo?.plan_hour + subInfo?.additional_time);
-    let isExpired = false;
-    const now = new Date();
-
-    // Check if now is within 2 days of end_time
-    const endTime = new Date(subInfo?.end_time);
-    const twoDaysBeforeEndTime = new Date(endTime);
-    twoDaysBeforeEndTime.setDate(endTime.getDate() - 2);
-
-    // Check if now is between twoDaysBeforeEndTime and endTime
-    const isNearbyEndTime = now >= twoDaysBeforeEndTime && now <= endTime;
-
-    // Check if usage_hour is within 2 hours of 2 * plan_hour
-    const isNearbyUsageHour = subInfo?.remain_time <= 2;
-
-    if (now > endTime || subInfo?.remain_time <= 0) {
-        isExpired = true;
-    }
-
-    appDispatch(
-        user_check_sub({
-            isNearbyEndTime,
-            isNearbyUsageHour,
-            isExpired
-        })
-    );
-    return {
-        isNearbyEndTime: isNearbyEndTime,
-        isNearbyUsageHour: isNearbyUsageHour,
-        isExpired
-    };
-};
-
 const startAnalytics = async () => {
     await UserSession(store.getState().user.email);
 };
@@ -138,9 +91,6 @@ export const preload = async () => {
             loadSettings(),
             fetchApp(),
             fetchSetting(),
-            fetchMessage(),
-            fetchStore(),
-            checkTimeUsage()
         ]);
     } catch (e) {
         console.log(`error ${e} in preload function`);

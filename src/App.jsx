@@ -14,7 +14,6 @@ import {
 } from './backend/reducers';
 import { Contents } from './backend/reducers/locales';
 import {
-    DesktopApp,
     LogMaintain,
     SidePane,
     StartMenu

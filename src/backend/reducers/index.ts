@@ -2,7 +2,6 @@ import { ThunkMiddleware, configureStore } from '@reduxjs/toolkit';
 import * as actions from '.';
 import * as Actions from '../actions/index.js';
 import { appSlice } from './apps';
-import { deskSlice } from './desktop';
 import { globalAsync, globalSlice } from './globals';
 import { modalSlice as popupSlice } from './modal';
 import { remoteAsync, remoteSlice } from './remote.js';
@@ -37,7 +36,6 @@ export const store = configureStore({
         user: userSlice.reducer,
         wallpaper: wallSlice.reducer,
         taskbar: taskSlice.reducer,
-        desktop: deskSlice.reducer,
         startmenu: menuSlice.reducer,
         apps: appSlice.reducer,
         globals: globalSlice.reducer,
@@ -54,19 +52,11 @@ export type RootState = ReturnType<typeof store.getState>;
 export const appDispatch = store.dispatch;
 export const useAppSelector: TypedUseSelectorHook<RootState> = useSelector;
 export const { update_language } = globalSlice.actions;
-export const { user_delete, user_update, user_check_sub } = userSlice.actions;
+export const { user_delete, user_update } = userSlice.actions;
 export const { wall_next, wall_set, wall_lock, wall_unlock } =
     wallSlice.actions;
 export const { task_audo, task_hide, task_show, task_toggle } =
     taskSlice.actions;
-export const {
-    desk_add,
-    desk_hide,
-    desk_show,
-    desk_remove,
-    desk_size,
-    desk_sort
-} = deskSlice.actions;
 export const {
     startall,
     startalpha,
@@ -135,7 +125,6 @@ export const {
     worker_vm_create_from_volume,
     worker_refresh,
     wait_and_claim_volume,
-    claim_volume,
     vm_session_create,
     vm_session_access,
     vm_session_close,
@@ -143,7 +132,7 @@ export const {
     peer_session_access,
     peer_session_close
 } = workerAsync;
-export const { fetch_user, get_payment } = userAsync;
+export const { fetch_user } = userAsync;
 export const {
     ping_session,
     sync,

@@ -37,48 +37,6 @@ import './sidepane.scss';
 import './startmenu.scss';
 export * from './start';
 
-export const DesktopApp = () => {
-    const deskApps = useAppSelector((state) =>
-        state.apps.apps.filter((x) => state.desktop.apps.includes(x.id))
-    );
-
-    const desk = useAppSelector((state) => state.desktop);
-    return (
-        <div className="desktopCont">
-            {!desk.hide &&
-                deskApps.map((app, i) => {
-                    return (
-                        <div
-                            key={i}
-                            className="dskApp prtclk relative"
-                            tabIndex={0}
-                            data-action={app.action}
-                            data-menu={app.menu}
-                            data-payload={app.payload || 'full'}
-                            data-id={app.id ?? 'null'}
-                            data-name={app.name}
-                        >
-                            <Icon
-                                className="dskIcon "
-                                click={'null'}
-                                src={app.id}
-                                pr
-                                width={Math.round(desk.size * 36)}
-                            />
-                            <div className="appName">{app.name}</div>
-                            {!app.installing ? null : (
-                                <AiOutlineCloudDownload className="text-[1.2rem] text-white absolute top-[-3px] right-[-3px]" />
-                            )}
-                            {app.ready ?? true ? null : (
-                                <PiPauseBold className="text-[1.2rem] text-white absolute top-[-3px] right-[-3px]" />
-                            )}
-                        </div>
-                    );
-                })}
-        </div>
-    );
-};
-
 export const SidePane = () => {
     const sidepane = useAppSelector((state) => state.sidepane);
     const setting = useAppSelector((state) => state.setting);

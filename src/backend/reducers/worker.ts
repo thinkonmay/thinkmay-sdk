@@ -1,7 +1,6 @@
 import { createAsyncThunk, createSlice, PayloadAction } from '@reduxjs/toolkit';
 import {
     appDispatch,
-    claim_volume,
     fetch_local_worker,
     popup_close,
     popup_open,
@@ -11,8 +10,7 @@ import {
     vm_session_access,
     vm_session_create,
     worker_refresh,
-    worker_session_close,
-    worker_vm_create_from_volume
+    worker_session_close
 } from '.';
 import {
     CloseSession,
@@ -169,38 +167,6 @@ export const workerAsync = {
 
             appDispatch(popup_close());
             return;
-        }
-    ),
-    claim_volume: createAsyncThunk(
-        'claim_volume',
-        async (_: void, { getState }): Promise<Computer | Error> => {
-            const node = new RenderNode((getState() as RootState).worker.data);
-
-            const all = await POCKETBASE.collection('volumes').getFullList<{
-                local_id: string;
-            }>();
-
-            const volume_id = all.at(0)?.local_id;
-            let result: RenderNode<Computer> | undefined = undefined;
-            node.iterate((x) => {
-                if (
-                    result == undefined &&
-                    (x.info as Computer)?.Volumes?.includes(volume_id)
-                )
-                    result = x;
-            });
-
-            if (result == undefined) throw new Error('worker not found');
-            else if (result.type == 'host_worker') {
-                await appDispatch(worker_vm_create_from_volume(volume_id));
-                await appDispatch(claim_volume());
-            } else if (result.type == 'vm_worker' && result.data.length > 0)
-                await appDispatch(vm_session_access(result.data.at(0).id));
-            else if (result.type == 'vm_worker' && result.data.length == 0)
-                await appDispatch(vm_session_create(result.id));
-
-            appDispatch(popup_close());
-            return result.info;
         }
     ),
     fetch_local_worker: createAsyncThunk(

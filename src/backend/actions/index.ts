@@ -4,8 +4,6 @@ import '../reducers/index';
 import {
     appDispatch,
     close_remote,
-    desk_hide,
-    desk_show,
     fetch_user,
     personal_worker_session_close,
     setting_theme,
@@ -15,13 +13,7 @@ import {
     wall_set
 } from '../reducers/index';
 import { keyboardCallback } from '../reducers/remote';
-import { fetchApp } from './background';
 
-export const refresh = async () => {
-    appDispatch(desk_hide());
-    await fetchApp();
-    setTimeout(() => appDispatch(desk_show()), 200);
-};
 
 
 export const getTreeValue = (obj: any, path: any) => {
