@@ -6,7 +6,6 @@ import { modalSlice as popupSlice } from './modal';
 import { remoteAsync, remoteSlice } from './remote.js';
 import { settSlice } from './settings.js';
 import { sidepaneAsync, sidepaneSlice } from './sidepane';
-import { taskSlice } from './taskbar';
 import { userAsync, userSlice } from './user';
 import { wallSlice } from './wallpaper';
 import { workerAsync, workerSlice } from './worker';
@@ -33,7 +32,6 @@ export const store = configureStore({
     reducer: {
         user: userSlice.reducer,
         wallpaper: wallSlice.reducer,
-        taskbar: taskSlice.reducer,
         globals: globalSlice.reducer,
         setting: settSlice.reducer,
         worker: workerSlice.reducer,
@@ -51,8 +49,6 @@ export const { update_language } = globalSlice.actions;
 export const { user_delete, user_update } = userSlice.actions;
 export const { wall_next, wall_set, wall_lock, wall_unlock } =
     wallSlice.actions;
-export const { task_audo, task_hide, task_show, task_toggle } =
-    taskSlice.actions;
 export const { setting_load, setting_setv, setting_theme, setting_togg } =
     settSlice.actions;
 export const { worker_prev, worker_view } = workerSlice.actions;
