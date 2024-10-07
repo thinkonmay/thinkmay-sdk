@@ -194,7 +194,7 @@ export const workerAsync = {
                     found = x;
             });
 
-            node.info.available = found != undefined;
+            node.info.available = found != undefined ? 'ready' : undefined;
             return node.any();
         }
     ),

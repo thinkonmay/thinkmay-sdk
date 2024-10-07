@@ -1,6 +1,4 @@
-import {
-    useAppSelector
-} from '../../backend/reducers';
+import { useAppSelector } from '../../backend/reducers';
 import './back.scss';
 import './getstarted.scss';
 

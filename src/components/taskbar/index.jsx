@@ -29,10 +29,10 @@ const Taskbar = () => {
     };
 
     const loginPassword = () => {
-        login('password').catch(e => {
-            alert('Invalid login '+ e.message)
-        })
-    }
+        login('password').catch((e) => {
+            alert('Invalid login ' + e.message);
+        });
+    };
 
     return (
         <>

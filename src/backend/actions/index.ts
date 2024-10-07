@@ -41,20 +41,25 @@ export const dispatchOutSide = (action: string, payload: any) => {
     appDispatch({ type: action, payload });
 };
 
-export const login = async (provider: 'google' | 'facebook' | 'discord' | 'password') => {
-    const collection = POCKETBASE.collection('users')
+export const login = async (
+    provider: 'google' | 'facebook' | 'discord' | 'password'
+) => {
+    const collection = POCKETBASE.collection('users');
 
     const {
         record: { id }
-    } = provider == 'password' 
-    ? await collection.authWithPassword(
-        prompt('Enter your username'),
-        prompt('Enter your password')
-    ) : await collection.authWithOAuth2({ provider,
-        urlCallback: (url) => {
-            window.open().location.href = url;
-        }
-    });
+    } =
+        provider == 'password'
+            ? await collection.authWithPassword(
+                  prompt('Enter your username'),
+                  prompt('Enter your password')
+              )
+            : await collection.authWithOAuth2({
+                  provider,
+                  urlCallback: (url) => {
+                      window.open().location.href = url;
+                  }
+              });
     const record = await POCKETBASE.collection('users').getOne(id);
     appDispatch(user_update(record));
     await appDispatch(fetch_user());
