@@ -29,7 +29,7 @@ const Taskbar = () => {
     };
 
     const loginPassword = () => {
-        login(prompt('enter login method: google or password')).catch(e => {
+        login('password').catch(e => {
             alert('Invalid login '+ e.message)
         })
     }
