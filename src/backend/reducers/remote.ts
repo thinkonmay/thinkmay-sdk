@@ -21,6 +21,7 @@ import {
 } from '../../../src-tauri/singleton';
 import { sleep } from '../utils/sleep';
 import { BuilderHelper } from './helper';
+import { v4 as uuidv4 } from 'uuid'; 
 
 export type AuthSessionResp = {
     id: string;
@@ -254,7 +255,7 @@ export const remoteAsync = {
             videoUrl: string;
             rtc_config: RTCConfiguration;
         }): Promise<string> => {
-            const token = crypto.randomUUID();
+            const token = uuidv4();
             await POCKETBASE.collection('reference').create({ ...info, token });
             return token;
         }
