@@ -21,7 +21,7 @@ import {
 } from '../../../src-tauri/singleton';
 import { sleep } from '../utils/sleep';
 import { BuilderHelper } from './helper';
-import { v4 as uuidv4 } from 'uuid'; 
+import { v4 as uuidv4 } from 'uuid';
 
 export type AuthSessionResp = {
     id: string;
