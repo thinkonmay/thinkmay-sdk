@@ -1,4 +1,4 @@
-import { UserSession } from '../../../src-tauri/api';
+import { UserEvents, UserSession } from '../../../src-tauri/api';
 import { CLIENT } from '../../../src-tauri/singleton';
 import {
     RootState,
@@ -14,8 +14,6 @@ import {
     sidepane_panethem,
     store,
     sync,
-    update_language,
-    wall_set,
     worker_refresh
 } from '../reducers';
 
@@ -34,14 +32,11 @@ const loadSettings = async () => {
     document.body.dataset.theme = thm;
     appDispatch(setting_theme(thm));
     appDispatch(sidepane_panethem(icon));
-    appDispatch(wall_set(thm == 'light' ? 0 : 1));
-    appDispatch(update_language('VN'));
 };
 
 export const fetchUser = async () => {
     await appDispatch(fetch_user());
 };
-
 export const fetchApp = async () => {
     await appDispatch(worker_refresh());
 };
@@ -86,20 +81,27 @@ const startAnalytics = async () => {
 };
 
 export const preload = async () => {
+    await fetchUser();
+    await Promise.allSettled([
+        startAnalytics(),
+        loadSettings(),
+        fetchApp(),
+        fetchSetting()
+    ]);
+};
+
+export const PreloadBackground = async () => {
     try {
-        await fetchUser();
-        await Promise.allSettled([
-            startAnalytics(),
-            loadSettings(),
-            fetchApp(),
-            fetchSetting()
-        ]);
+        await preload();
     } catch (e) {
-        console.log(`error ${e} in preload function`);
+        UserEvents({
+            type: 'preload/rejected',
+            payload: e
+        });
     }
 
     setInterval(check_worker, 30 * 1000);
     setInterval(sync, 2 * 1000);
-    setInterval(handleClipboard, 100);
+    setInterval(handleClipboard, 1000);
     setInterval(ping_session, 1000 * 30);
 };

@@ -1,10 +1,11 @@
 import { createAsyncThunk, createSlice, PayloadAction } from '@reduxjs/toolkit';
 import {
     appDispatch,
-    hard_reset,
+    close_remote,
     popup_close,
     popup_open,
     remote_connect,
+    remote_ready,
     store,
     toggle_remote
 } from '.';
@@ -17,9 +18,9 @@ import {
     MIN_BITRATE,
     MIN_FRAMERATE,
     PINGER,
+    ready,
     SIZE
 } from '../../../src-tauri/singleton';
-import { sleep } from '../utils/sleep';
 import { BuilderHelper } from './helper';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -43,6 +44,7 @@ export type Metric = {
 type Data = {
     tracker_id?: string;
     active: boolean;
+    ready: boolean;
     fullscreen: boolean;
     pointer_lock: boolean;
     relative_mouse: boolean;
@@ -72,6 +74,7 @@ const initialState: Data = {
     local: false,
     focus: true,
     active: false,
+    ready: false,
     scancode: false,
     no_strict_timing: false,
     fullscreen: false,
@@ -100,71 +103,14 @@ export function WindowD() {
     );
 }
 
-export async function keyboardCallback(val, action: 'up' | 'down') {
-    if ('vibrate' in navigator && action == 'down') {
-        navigator.vibrate([40, 30, 0]);
-    }
-
-    if (CLIENT == null) return;
-    CLIENT.VirtualKeyboard({
-        code: action == 'up' ? EventCode.KeyUp : EventCode.KeyDown,
-        jsKey: val
-    });
-}
-export async function gamePadBtnCallback(index: number, type: 'up' | 'down') {
-    if ('vibrate' in navigator && type == 'down') {
-        navigator.vibrate([40, 30, 0]);
-    }
-    if (CLIENT == null) return;
-    CLIENT.VirtualGamepadButton(type == 'down', index);
-}
-
-export async function gamepadAxisCallback(
-    x: number,
-    y: number,
-    type: 'left' | 'right'
-) {
-    if (CLIENT == null) return;
-    CLIENT.VirtualGamepadAxis(x, y, type);
-}
-
 export const setClipBoard = async (content: string) => {
-    if (CLIENT == null) return;
-
-    CLIENT?.SetClipboard(content);
+    await CLIENT?.SetClipboard(content);
 };
-
-export function openRemotePage(
-    url: string,
-    options?: {
-        app_name?: string;
-        demoSession?: boolean;
-    }
-) {
-    const Url = new URL(url);
-    Url.searchParams.set('no_stretch', 'true');
-    if (store.getState().remote.scancode)
-        Url.searchParams.set('scancode', `true`);
-    if (options?.demoSession) Url.searchParams.set('demo', `true`);
-    if (options?.app_name) Url.searchParams.set('page', options.app_name);
-
-    const open = Url.toString();
-    if (isMobile()) {
-        document.location.href = open;
-        return;
-    }
-
-    setTimeout(() => {
-        window.open(open, '_blank');
-    }, 0);
-}
-
 export const remoteAsync = {
     check_worker: async () => {
         if (!store.getState().remote.active) return;
         else if (store.getState().remote.local) return;
-        else if (CLIENT == null) return;
-        else if (!CLIENT.ready()) return;
+        else if (CLIENT == null || !CLIENT?.ready()) return;
 
         // TODO
     },
@@ -201,8 +147,7 @@ export const remoteAsync = {
     },
     sync: async () => {
         if (!store.getState().remote.active) return;
-        else if (CLIENT == null) return;
-        else if (!CLIENT.ready()) return;
+        else if (CLIENT == null || !CLIENT?.ready()) return;
 
         appDispatch(
             remoteSlice.actions.metrics({
@@ -221,6 +166,8 @@ export const remoteAsync = {
             store.getState().remote.prev_framerate != SIZE()
         )
             appDispatch(remoteSlice.actions.internal_sync());
+
+        if (isMobile()) await CLIENT.PointerVisible(true);
     },
     direct_access: createAsyncThunk(
         'direct_access',
@@ -243,6 +190,8 @@ export const remoteAsync = {
                     throw new Error('not found any query');
 
                 appDispatch(remote_connect({ ...(data.items[0] as any) }));
+                if (!(await ready())) appDispatch(close_remote());
+                else appDispatch(remote_ready());
             } catch (e) {
                 throw new Error('Failed to query ' + e);
             }
@@ -271,16 +220,8 @@ export const remoteAsync = {
     }),
     toggle_remote_async: createAsyncThunk(
         'toggle_remote_async',
-        async (_: void, { getState }) => {
-            if (!store.getState().remote.active) {
-                appDispatch(toggle_remote());
-                await sleep(2000);
-                return;
-            }
-
+        async (_: void, {}) => {
             appDispatch(toggle_remote());
-
-            return;
         }
     ),
     hard_reset_async: createAsyncThunk(
@@ -288,8 +229,15 @@ export const remoteAsync = {
         async (_: void, { getState }) => {
             if (CLIENT == null) return;
 
-            appDispatch(hard_reset());
-            return;
+            appDispatch(
+                popup_open({
+                    type: 'notify',
+                    data: { loading: true, title: 'Connect to PC' }
+                })
+            );
+            await CLIENT.HardReset();
+            await ready();
+            appDispatch(popup_close());
         }
     )
 };
@@ -320,6 +268,10 @@ export const remoteSlice = createSlice({
 
             state.active = true;
             state.fullscreen = true;
+            state.ready = false;
+        },
+        remote_ready: (state) => {
+            state.ready = true;
         },
         share_reference: (state) => {
             const token = state.ref;
@@ -340,27 +292,16 @@ export const remoteSlice = createSlice({
             state.active = false;
             state.auth = undefined;
             state.fullscreen = false;
-            setTimeout(() => CLIENT?.Close(), 100);
+            CLIENT?.Close();
         },
         toggle_remote: (state) => {
             if (!state.active) {
                 state.fullscreen = true;
             } else {
                 state.fullscreen = false;
-                setTimeout(() => CLIENT?.Close(), 100);
+                CLIENT?.Close();
             }
             state.active = !state.active;
-        },
-        hard_reset: () => {
-            if (CLIENT == null) return;
-
-            CLIENT?.HardReset();
-        },
-        strict_timing_toggle: (state) => {
-            state.no_strict_timing = !state.no_strict_timing;
-            if (CLIENT)
-                CLIENT.Metrics.video.idrcount.strict_timing =
-                    !state.no_strict_timing;
         },
         strict_timing: (state, action: PayloadAction<boolean>) => {
             state.no_strict_timing = action.payload;
@@ -450,8 +391,6 @@ export const remoteSlice = createSlice({
                     const { bitrate, framerate } = action.payload;
                     state.bitrate = bitrate;
                     state.framerate = framerate;
-
-                    if (isMobile()) return;
                 }
             },
             {

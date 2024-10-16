@@ -1,18 +1,16 @@
 import 'sweetalert2/src/sweetalert2.scss';
 import { getDomainURL, POCKETBASE } from '../../../src-tauri/api';
+import { keyboard } from '../../../src-tauri/singleton';
 import '../reducers/index';
 import {
     appDispatch,
     close_remote,
-    fetch_user,
-    personal_worker_session_close,
     setting_theme,
     sidepane_panethem,
     store,
-    user_update,
-    wall_set
+    unclaim_volume
 } from '../reducers/index';
-import { keyboardCallback } from '../reducers/remote';
+import { preload } from './background';
 
 export const getTreeValue = (obj: any, path: any) => {
     if (path == null) return false;
@@ -34,7 +32,6 @@ export const changeTheme = () => {
     document.body.dataset.theme = thm;
     appDispatch(setting_theme(thm));
     appDispatch(sidepane_panethem(icon));
-    appDispatch(wall_set(thm == 'light' ? 0 : 1));
 };
 
 export const dispatchOutSide = (action: string, payload: any) => {
@@ -60,21 +57,19 @@ export const login = async (
                       window.open().location.href = url;
                   }
               });
-    const record = await POCKETBASE.collection('users').getOne(id);
-    appDispatch(user_update(record));
-    await appDispatch(fetch_user());
+    await preload();
 };
 
 export const shutDownVm = async () => {
-    await appDispatch(personal_worker_session_close());
+    await appDispatch(unclaim_volume());
     appDispatch(close_remote());
 };
 export const clickShortCut = (keys = []) => {
     keys.forEach((k, i) => {
-        keyboardCallback(k, 'down');
+        keyboard({ val: k, action: 'down' });
     });
     keys.forEach((k, i) => {
-        keyboardCallback(k, 'up');
+        keyboard({ val: k, action: 'up' });
     });
 };
 

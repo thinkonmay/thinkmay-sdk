@@ -22,12 +22,7 @@ type Data = {
 };
 
 const initialState: Data = {
-    data_stack: [
-        //{
-        //    type: 'maintain',
-        //    data: {}
-        //}
-    ]
+    data_stack: []
 };
 
 import { PayloadAction, createSlice } from '@reduxjs/toolkit';

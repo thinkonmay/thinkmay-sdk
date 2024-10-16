@@ -1,6 +1,7 @@
 import { PayloadAction, createAsyncThunk, createSlice } from '@reduxjs/toolkit';
 import { appDispatch, render_message, store } from '.';
 import { LOCAL } from '../../../src-tauri/api';
+import { DevEnv } from '../../../src-tauri/api/database';
 import { BuilderHelper, CacheRequest } from './helper';
 import { Contents } from './locales';
 
@@ -21,8 +22,12 @@ export type Message = {
 type IGamePadSetting = {
     open: boolean;
     btnSize: 1 | 2 | 3;
-    draggable: 'static' | 'draggable';
+    draggable: boolean;
     isDefaultPos: boolean;
+};
+type DesktopControl = {
+    buttons: any[];
+    shortcuts: any[];
 };
 type MobileControl = {
     hide: boolean;
@@ -37,8 +42,7 @@ type Data = {
     notifications: Notification[];
     message: Message[];
 
-    quicks: any[];
-    shortcuts: any[];
+    desktopControl: DesktopControl;
     mobileControl: MobileControl;
     hide: boolean;
     banhide: boolean;
@@ -98,150 +102,148 @@ const listMobileShortCut = [
         val: ['Backspace']
     }
 ];
+const listMobileSettings = [
+    {
+        ui: true,
+        id: 'resetVideoBtn',
+        src: 'MdOutlineResetTv',
+        name: [Contents.RESET_VIDEO],
+        state: 'network.airplane',
+        action: 'hard_reset_async'
+    },
+    {
+        ui: true,
+        id: 'fullscrenBtn',
+        src: 'MdFullscreen',
+        name: [Contents.FULLSCREEN],
+        state: 'fullscreen',
+        action: 'remote/toggle_fullscreen'
+    },
+    {
+        ui: true,
+        id: 'virtKeyboardBtn',
+        src: 'MdOutlineKeyboard',
+        name: [Contents.OPEN_KEYBOARD],
+        state: 'keyboardOpen',
+        action: 'sidepane/toggle_keyboard'
+    },
+    {
+        ui: true,
+        id: 'virtGamepadBtn',
+        src: 'MdOutlineSportsEsports',
+        name: [Contents.OPEN_GAMEPAD],
+        state: 'gamePadOpen',
+        action: 'sidepane/toggle_gamepad_setting'
+    },
+    {
+        ui: true,
+        id: 'shareLinkBtn',
+        src: 'MdOutlineLink',
+        name: [Contents.EXTERNAL_TAB],
+        state: 'network.airplane',
+        action: 'remote/share_reference'
+    },
+    {
+        ui: true,
+        id: 'shutdownBtn',
+
+        src: 'MdOutlinePowerSettingsNew',
+        name: [Contents.SHUT_DOWN],
+        state: 'shutdown',
+        action: 'shutDownVm',
+        style: { backgroundColor: '#d92d20', color: '#f3f4f5' }
+    }
+];
 const listDesktopShortCut = [
     {
         name: 'Win+D',
         val: ['lwin', 'd']
     }
 ];
+const listDesktopSettings = [
+    {
+        ui: true,
+        id: 'resetVideoBtn',
+
+        src: 'MdOutlineResetTv',
+        name: [Contents.RESET_VIDEO],
+        state: 'network.airplane',
+        action: 'hard_reset_async'
+    },
+    {
+        ui: true,
+        id: 'fullscrenBtn',
+        src: 'MdFullscreen',
+        name: [Contents.FULLSCREEN],
+        state: 'fullscreen',
+        action: 'remote/toggle_fullscreen'
+    },
+    {
+        ui: true,
+        id: 'fixKeyboardBtn',
+
+        src: 'MdOutlineKeyboard',
+        name: [Contents.SCAN_CODE],
+        state: 'scancode',
+        action: 'remote/scancode_toggle'
+    },
+    {
+        ui: true,
+        id: 'shareLinkBtn',
+
+        src: 'MdOutlineLink',
+        name: [Contents.EXTERNAL_TAB],
+        state: 'share_reference',
+        action: 'remote/share_reference'
+    },
+    {
+        ui: true,
+        id: 'gamingMouseBtn',
+
+        src: 'FaMousePointer',
+        name: [Contents.RELATIVE_MOUSE],
+        state: 'relative_mouse',
+        action: 'remote/relative_mouse'
+    },
+    {
+        ui: true,
+        id: 'shutdownBtn',
+
+        src: 'MdOutlinePowerSettingsNew',
+        name: [Contents.SHUT_DOWN],
+        state: 'shutdown',
+        action: 'shutDownVm',
+        style: { backgroundColor: '#d92d20', color: '#f3f4f5' }
+    },
+    ...(!DevEnv
+        ? []
+        : [
+              {
+                  ui: true,
+                  id: 'toggle_remote_async',
+                  src: 'FiVideoOff',
+                  name: [Contents.VIDEO_TOGGLE],
+                  state: 'active',
+                  action: 'toggle_remote_async'
+              }
+          ])
+];
 
 const initialState: Data = {
-    quicks: [
-        {
-            ui: true,
-            src: 'FiVideoOff',
-            name: [Contents.VIDEO_TOGGLE],
-            state: 'active',
-            action: 'toggle_remote_async'
-        },
-        {
-            ui: true,
-            src: 'MdOutlineResetTv',
-            name: [Contents.RESET_VIDEO],
-            state: 'network.airplane',
-            action: 'hard_reset_async'
-        },
-        //{
-        //    ui: true,
-        //    src: 'FaWindows',
-        //    name: [Contents.HOMESCREEN],
-        //    action: 'remote/homescreen'
-        //},
-        {
-            ui: true,
-            src: 'MdFullscreen',
-            name: [Contents.FULLSCREEN],
-            state: 'fullscreen',
-            action: 'remote/toggle_fullscreen'
-        },
-        {
-            ui: true,
-            src: 'MdOutlineKeyboard',
-            name: [Contents.SCAN_CODE],
-            state: 'scancode',
-            action: 'remote/scancode_toggle'
-        },
-        {
-            ui: true,
-            src: 'MdOutlineLink',
-            name: [Contents.EXTERNAL_TAB],
-            state: 'share_reference',
-            action: 'remote/share_reference'
-        },
-        {
-            ui: true,
-            src: 'FaMousePointer',
-            name: [Contents.RELATIVE_MOUSE],
-            state: 'relative_mouse',
-            action: 'remote/relative_mouse'
-        },
-        {
-            ui: true,
-            src: 'MdOutlinePowerSettingsNew',
-            name: [Contents.SHUT_DOWN],
-            state: 'shutdown',
-            action: 'shutDownVm',
-            style: { backgroundColor: '#d92d20', color: '#f3f4f5' }
-        },
-        {
-            ui: true,
-            src: 'MdNetworkWifi2Bar',
-            name: [Contents.STRICT_TIMING],
-            state: 'no_strict_timing',
-            action: 'remote/strict_timing_toggle'
-        }
-    ],
-    shortcuts: listDesktopShortCut,
-
+    desktopControl: {
+        buttons: listDesktopSettings,
+        shortcuts: listDesktopShortCut
+    },
     mobileControl: {
         hide: true,
-        buttons: [
-            {
-                ui: true,
-                src: 'MdOutlineResetTv',
-                name: [Contents.RESET_VIDEO],
-                state: 'network.airplane',
-                action: 'hard_reset_async'
-            },
-            {
-                ui: true,
-                src: 'MdFullscreen',
-                name: [Contents.FULLSCREEN],
-                state: 'fullscreen',
-                action: 'remote/toggle_fullscreen'
-            },
-            {
-                ui: true,
-                src: 'MdOutlineKeyboard',
-                name: [Contents.OPEN_KEYBOARD],
-                state: 'keyboardOpen',
-                action: 'sidepane/toggle_keyboard'
-            },
-            {
-                ui: true,
-                src: 'MdOutlineSportsEsports',
-                name: [Contents.OPEN_GAMEPAD],
-                state: 'gamePadOpen',
-                //action: 'sidepane/toggle_gamepad'
-                action: 'sidepane/toggle_gamepad_setting'
-            },
-            //{
-            //    ui: true,
-            //    src: 'MdOutlineSettingsInputComponent',
-            //    name: [Contents.ADJUST_GAMEPAD],
-            //    state: 'network.airplane',
-            //    action: 'sidepane/toggle_gamepad_setting'
-            //},
-            {
-                ui: true,
-                src: 'MdOutlineLink',
-                name: [Contents.EXTERNAL_TAB],
-                state: 'network.airplane',
-                action: 'remote/share_reference'
-            },
-            {
-                ui: true,
-                src: 'MdNetworkWifi2Bar',
-                name: [Contents.STRICT_TIMING],
-                state: 'no_strict_timing',
-                action: 'remote/strict_timing_toggle'
-            },
-            {
-                ui: true,
-                src: 'MdOutlinePowerSettingsNew',
-                name: [Contents.SHUT_DOWN],
-                state: 'shutdown',
-                action: 'shutDownVm',
-                style: { backgroundColor: '#d92d20', color: '#f3f4f5' }
-            }
-        ],
+        buttons: listMobileSettings,
         shortcuts: listMobileShortCut,
         setting: initialSetting,
         gamePadHide: true,
         keyboardHide: true,
         gamepadSetting: {
             btnSize: 1,
-            draggable: 'static',
+            draggable: false,
             open: false,
             isDefaultPos: false
         }
@@ -332,6 +334,9 @@ export const sidepaneSlice = createSlice({
         sidepane_panetogg: (state) => {
             state.hide = !state.hide;
         },
+        sidepane_paneopen: (state) => {
+            state.hide = false;
+        },
         sidepane_panehide: (state) => {
             state.hide = true;
         },
@@ -348,7 +353,8 @@ export const sidepaneSlice = createSlice({
         },
         toggle_gamepad: (state) => {
             state.mobileControl.gamePadHide = !state.mobileControl.gamePadHide;
-            state.mobileControl.keyboardHide = true;
+            state.hide = true;
+            state.banhide = true;
         },
         toggle_gamepad_setting: (state) => {
             state.mobileControl.gamepadSetting.open =
@@ -359,23 +365,18 @@ export const sidepaneSlice = createSlice({
         },
         toggle_gamepad_draggable: (state, action) => {
             state.mobileControl.gamePadHide = false;
-            const prev = state.mobileControl.gamepadSetting.draggable;
-            if (prev == 'static') {
-                state.mobileControl.gamepadSetting.draggable = 'draggable';
-            } else if (prev == 'draggable') {
-                state.mobileControl.gamepadSetting.draggable = 'static';
-            }
+            state.mobileControl.gamepadSetting.draggable =
+                !state.mobileControl.gamepadSetting.draggable;
         },
         toggle_default_gamepad_position: (state) => {
             state.mobileControl.gamepadSetting.isDefaultPos =
                 !state.mobileControl.gamepadSetting.isDefaultPos;
         },
         toggle_keyboard: (state) => {
-            let oldState = state.mobileControl.keyboardHide;
-            state.mobileControl.keyboardHide = !oldState;
+            state.mobileControl.keyboardHide =
+                !state.mobileControl.keyboardHide;
             state.hide = true;
             state.banhide = true;
-            state.mobileControl.gamePadHide = true;
         }
     },
     extraReducers: (builder) => {

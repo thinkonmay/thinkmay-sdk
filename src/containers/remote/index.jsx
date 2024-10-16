@@ -1,9 +1,9 @@
 import { useEffect, useRef } from 'react';
 import {
     AudioWrapper,
-    isMobile,
     RemoteDesktopClient,
-    VideoWrapper
+    VideoWrapper,
+    isMobile
 } from '../../../src-tauri/core';
 import { Assign, CLIENT } from '../../../src-tauri/singleton';
 import {
@@ -11,6 +11,8 @@ import {
     set_fullscreen,
     useAppSelector
 } from '../../backend/reducers';
+import { VirtualGamepad } from './control/gamepad';
+import { VirtKeyboard } from './control/keyboard';
 import './remote.scss';
 
 export const Remote = () => {
@@ -20,30 +22,24 @@ export const Remote = () => {
     const gamepad = useAppSelector(
         (state) => !state.sidepane.mobileControl.gamePadHide
     );
-    useEffect(() => {
-        if (CLIENT == null) return;
-        else if (isMobile()) CLIENT?.PointerVisible(true);
-
-        if (keyboard || gamepad) CLIENT.hid.disable = true;
-        else CLIENT.hid.disable = false;
-
-        CLIENT.touch.mode =
-            isMobile() && !keyboard
-                ? gamepad
-                    ? 'gamepad'
-                    : 'trackpad'
-                : 'none';
-    }, [gamepad, keyboard]);
-
-    const { active, auth, scancode } = useAppSelector((store) => store.remote);
+    const draggable = useAppSelector(
+        (state) => state.sidepane.mobileControl.gamepadSetting.draggable
+    );
+    const { active, auth, scancode, relative_mouse, fullscreen } =
+        useAppSelector((store) => store.remote);
     const remoteVideo = useRef(null);
     const remoteAudio = useRef(null);
     useEffect(() => {
         if (!active || auth == undefined) return;
-        SetupWebRTC();
+        setupWebRTC();
     }, [active]);
 
-    const SetupWebRTC = () =>
+    useEffect(() => {
+        if (CLIENT == null) return;
+        CLIENT.touch.mode = keyboard || gamepad ? 'none' : 'trackpad';
+    }, [gamepad, keyboard]);
+
+    const setupWebRTC = () =>
         Assign(
             () =>
                 new RemoteDesktopClient(
@@ -55,13 +51,26 @@ export const Remote = () => {
                 )
         );
 
-    const relative_mouse = useAppSelector((x) => x.remote.relative_mouse);
     const pointerlock = () => {
-        appDispatch(set_fullscreen(true));
-        remoteVideo.current.requestPointerLock();
+        if (!fullscreen) appDispatch(set_fullscreen(true));
+        if (
+            !(
+                document.pointerLockElement != null ||
+                document.mozPointerLockElement != null ||
+                document.webkitPointerLockElement != null
+            )
+        )
+            remoteVideo.current.requestPointerLock();
     };
     return (
         <div className="relative">
+            {isMobile() ? (
+                keyboard ? (
+                    <VirtKeyboard />
+                ) : gamepad || draggable ? (
+                    <VirtualGamepad />
+                ) : null
+            ) : null}
             <video
                 className="remote"
                 ref={remoteVideo}

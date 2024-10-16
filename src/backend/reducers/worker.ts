@@ -1,14 +1,19 @@
 import { createAsyncThunk, createSlice, PayloadAction } from '@reduxjs/toolkit';
+import { v4 as uuidv4 } from 'uuid';
 import {
     appDispatch,
+    close_remote,
     fetch_local_worker,
     popup_close,
     popup_open,
     remote_connect,
+    remote_ready,
     RootState,
     save_reference,
+    unclaim_volume,
     vm_session_access,
     vm_session_create,
+    wait_and_claim_volume,
     worker_refresh,
     worker_session_close
 } from '.';
@@ -19,19 +24,19 @@ import {
     getDomain,
     GetInfo,
     KeepaliveVolume,
+    LOCAL,
     ParseRequest,
     ParseVMRequest,
     PingSession,
-    POCKETBASE,
     RenderNode,
     StartRequest,
     StartThinkmay,
+    StartThinkmayOnPeer,
     StartThinkmayOnVM,
     StartVirtdaemon,
     UserEvents
 } from '../../../src-tauri/api';
-import { SetPinger } from '../../../src-tauri/singleton';
-import { sleep } from '../utils/sleep';
+import { ready, SetPinger } from '../../../src-tauri/singleton';
 import { BuilderHelper } from './helper';
 
 type WorkerType = {
@@ -60,12 +65,22 @@ export const workerAsync = {
             await appDispatch(fetch_local_worker(getDomain()));
         }
     ),
+    worker_reload: createAsyncThunk(
+        'worker_reload',
+        async (): Promise<void> => {
+            await appDispatch(worker_refresh());
+        }
+    ),
     wait_and_claim_volume: createAsyncThunk(
         'wait_and_claim_volume',
         async (_: void, { getState }) => {
-            const email = (getState() as RootState).user.email;
-            const ram = (getState() as RootState).user.stat?.ram ?? '16';
-            const vcpu = (getState() as RootState).user.stat?.vcpu ?? '16';
+            const { email, subscription } = (getState() as RootState).user;
+            const { status } = subscription;
+            const { vcpu, ram } =
+                status == 'PAID' || status == 'IMPORTED'
+                    ? subscription.local_metadata
+                    : { vcpu: '16', ram: '16' };
+
             await appDispatch(worker_refresh());
             appDispatch(
                 popup_open({
@@ -74,11 +89,7 @@ export const workerAsync = {
                 })
             );
 
-            const all = await POCKETBASE.collection('volumes').getFullList<{
-                local_id: string;
-            }>();
-            const volume_id = all.at(0)?.local_id;
-
+            const volume_id = (getState() as RootState).user.volume_id;
             const now = () => new Date().getTime() / 1000 / 60;
             const start = now();
             while (now() - start < 180) {
@@ -111,28 +122,67 @@ export const workerAsync = {
                     throw new Error('invalid tree');
                 }
 
+                const keepalive = KeepaliveVolume(
+                    computer,
+                    volume_id,
+                    PingSession
+                );
                 if (result.type == 'vm_worker' && result.data.length > 0) {
-                    await appDispatch(vm_session_access(result.data.at(0).id));
-                    SetPinger(
-                        KeepaliveVolume(computer, volume_id, PingSession)
+                    appDispatch(popup_close());
+                    appDispatch(
+                        popup_open({
+                            type: 'notify',
+                            data: {
+                                loading: false,
+                                tips: false,
+                                title: 'Connecting video & audio',
+                                text: 'Vui lòng giữ tab cho tới khi connect xong!'
+                            }
+                        })
                     );
+                    const [{ id }] = result.data;
+                    const interval = setInterval(keepalive, 30 * 1000);
+                    await appDispatch(
+                        vm_session_access({ id, retry_method: 'claim' })
+                    );
+                    clearInterval(interval);
+
+                    SetPinger(keepalive);
                     appDispatch(popup_close());
                     return;
                 } else if (
                     result.type == 'vm_worker' &&
                     result.data.length == 0
                 ) {
-                    await appDispatch(vm_session_create(result.id));
-                    SetPinger(
-                        KeepaliveVolume(computer, volume_id, PingSession)
+                    appDispatch(popup_close());
+                    appDispatch(
+                        popup_open({
+                            type: 'notify',
+                            data: {
+                                loading: false,
+                                tips: false,
+                                title: 'Connecting video & audio',
+                                text: 'Vui lòng giữ tab cho tới khi connect xong!'
+                            }
+                        })
                     );
+                    const { id } = result;
+                    const interval = setInterval(keepalive, 30 * 1000);
+                    await appDispatch(
+                        vm_session_create({ id, retry_method: 'claim' })
+                    );
+                    clearInterval(interval);
+
+                    SetPinger(keepalive);
                     appDispatch(popup_close());
                     return;
                 }
 
+                const id = uuidv4();
                 UserEvents({
                     type: 'remote/requesting_vm',
                     payload: {
+                        id,
                         email
                     }
                 });
@@ -140,13 +190,14 @@ export const workerAsync = {
                 const resp = await StartVirtdaemon(
                     computer,
                     volume_id,
-                    ram,
-                    vcpu
+                    `${ram ?? 16}`,
+                    `${vcpu ?? 16}`
                 );
                 if (resp instanceof Error) {
                     UserEvents({
                         type: 'remote/request_vm_failure',
                         payload: {
+                            id,
                             email,
                             error: resp.message
                         }
@@ -158,6 +209,7 @@ export const workerAsync = {
                 UserEvents({
                     type: 'remote/request_vm_success',
                     payload: {
+                        id,
                         email
                     }
                 });
@@ -171,7 +223,7 @@ export const workerAsync = {
     ),
     fetch_local_worker: createAsyncThunk(
         'fetch_local_worker',
-        async (address: string): Promise<any> => {
+        async (address: string, { getState }): Promise<any> => {
             const result = await GetInfo(address);
             if (result instanceof Error) {
                 const node = new RenderNode<{}>();
@@ -179,10 +231,7 @@ export const workerAsync = {
                 return node.any();
             }
 
-            const all = await POCKETBASE.collection('volumes').getFullList<{
-                local_id: string;
-            }>();
-            const volume_id = all.at(0)?.local_id;
+            const volume_id = (getState() as RootState).user.volume_id;
 
             let found: RenderNode<Computer> | undefined = undefined;
             const node = fromComputer(address, result);
@@ -194,7 +243,31 @@ export const workerAsync = {
                     found = x;
             });
 
-            node.info.available = found != undefined ? 'ready' : undefined;
+            if (found != undefined) {
+                const { data, error: errr } = await LOCAL()
+                    .from('volume_map')
+                    .select('id')
+                    .eq('id', volume_id)
+                    .eq('status', 'IMPORTED')
+                    .limit(1);
+                if (errr) throw new Error(errr.message);
+                else if (data.length == 1) node.info.available = 'ready';
+                else {
+                    const { data, error: err } = await LOCAL()
+                        .from('job')
+                        .select('result')
+                        .eq('arguments->>id', volume_id)
+                        .limit(1);
+                    if (err) throw new Error(err.message);
+                    else if (data.length > 0 && data[0].result == 'success')
+                        node.info.available = 'ready';
+                    else node.info.available = 'not_ready';
+                }
+
+                if (found.type == 'vm_worker' && node.info.available == 'ready')
+                    node.info.available = 'started';
+            }
+
             return node.any();
         }
     ),
@@ -210,6 +283,8 @@ export const workerAsync = {
             appDispatch(fetch_local_worker(computer.address));
             appDispatch(remote_connect(result));
             await appDispatch(save_reference(result));
+            if (!(await ready())) appDispatch(close_remote());
+            else appDispatch(remote_ready());
         }
     ),
     worker_session_access: createAsyncThunk(
@@ -230,16 +305,22 @@ export const workerAsync = {
             if (result instanceof Error) throw result;
             appDispatch(remote_connect(result));
             await appDispatch(save_reference(result));
+            if (!(await ready())) appDispatch(close_remote());
+            else appDispatch(remote_ready());
         }
     ),
-    personal_worker_session_close: createAsyncThunk(
-        '',
+    retry_volume_claim: createAsyncThunk(
+        'retry_volume_claim',
+        async (_: void, {}): Promise<any> => {
+            appDispatch(close_remote());
+            await appDispatch(unclaim_volume());
+            await appDispatch(wait_and_claim_volume());
+        }
+    ),
+    unclaim_volume: createAsyncThunk(
+        'unclaim_volume',
         async (_: void, { getState }): Promise<any> => {
-            const all = await POCKETBASE.collection('volumes').getFullList<{
-                local_id: string;
-            }>();
-
-            const volume_id = all.at(0)?.local_id;
+            const volume_id = (getState() as RootState).user.volume_id;
 
             const node = new RenderNode((getState() as RootState).worker.data);
 
@@ -251,6 +332,9 @@ export const workerAsync = {
                 )
                     volumeFound = x;
             });
+
+            if (volumeFound == undefined)
+                throw new Error('user do not have available volume');
 
             const host_session = node.findParent(
                 volumeFound.id,
@@ -306,37 +390,64 @@ export const workerAsync = {
     ),
     vm_session_create: createAsyncThunk(
         'vm_session_create',
-        async (ip: string, { getState }): Promise<any> => {
+        async (
+            {
+                id: id,
+                retry_method
+            }: { id: string; retry_method: 'claim' | 'ignore' },
+            { getState }
+        ): Promise<any> => {
             await appDispatch(worker_refresh());
 
             const node = new RenderNode((getState() as RootState).worker.data);
 
-            const host = node.findParent<Computer>(ip, 'host_worker');
+            const host = node.findParent<Computer>(id, 'host_worker');
             const vm_session = node.findParent<StartRequest>(
-                ip,
+                id,
                 'host_session'
             );
 
             if (host == undefined) throw new Error('invalid tree');
             else if (vm_session == undefined) throw new Error('invalid tree');
 
-            const result = await StartThinkmayOnVM(host.info, vm_session.id);
+            const result = await (async () => {
+                for (let index = 0; index < 5; index++) {
+                    const result = await StartThinkmayOnVM(
+                        host.info,
+                        vm_session.id
+                    );
+                    if (result instanceof Error) continue;
+                    else return result;
+                }
+
+                return new Error('failed to start vm session after 5 retries');
+            })();
             if (result instanceof Error) throw result;
-            await sleep(15 * 1000);
+            appDispatch(fetch_local_worker(host.info.address));
             appDispatch(remote_connect(result));
-            await appDispatch(fetch_local_worker(host.info.address));
             await appDispatch(save_reference(result));
+            const success = await ready();
+            if (!success && retry_method == 'claim')
+                appDispatch(workerAsync.retry_volume_claim());
+            else if (!success && retry_method == 'ignore')
+                appDispatch(close_remote());
+            else appDispatch(remote_ready());
         }
     ),
     vm_session_access: createAsyncThunk(
         'vm_session_access',
-        async (input: string, { getState }): Promise<any> => {
+        async (
+            {
+                id,
+                retry_method
+            }: { id: string; retry_method: 'claim' | 'ignore' },
+            { getState }
+        ): Promise<any> => {
             const node = new RenderNode((getState() as RootState).worker.data);
-            const computer = node.findParent<Computer>(input, 'host_worker')
-                ?.info;
-            const session = node.find<StartRequest>(input)?.info;
+            const computer = node.findParent<Computer>(id, 'host_worker')?.info;
+            const session = node.find<StartRequest>(id)?.info;
             const vm_session_id = node.findParent<StartRequest>(
-                input,
+                id,
                 'host_session'
             )?.info.id;
 
@@ -350,8 +461,13 @@ export const workerAsync = {
             });
 
             appDispatch(remote_connect(result));
-            await sleep(15 * 1000);
             await appDispatch(save_reference(result));
+            const success = await ready();
+            if (!success && retry_method == 'claim')
+                appDispatch(workerAsync.retry_volume_claim());
+            else if (!success && retry_method == 'ignore')
+                appDispatch(close_remote());
+            else appDispatch(remote_ready());
         }
     ),
     vm_session_close: createAsyncThunk(
@@ -386,11 +502,14 @@ export const workerAsync = {
             const host = node.findParent<Computer>(ip, 'host_worker');
             if (host == undefined) throw new Error('invalid tree');
 
-            // const result = await StartThinkmayOnPeer(host.info, ip);
-            // appDispatch(remote_connect(result));
+            const result = await StartThinkmayOnPeer(host.info, ip);
+            if (result instanceof Error) throw result;
 
-            // await appDispatch(fetch_local_worker(host.info.address));
-            // await appDispatch(save_reference(result));
+            appDispatch(fetch_local_worker(host.info.address));
+            appDispatch(remote_connect(result));
+            await appDispatch(save_reference(result));
+            if (!(await ready())) appDispatch(close_remote());
+            else appDispatch(remote_ready());
         }
     ),
     peer_session_access: createAsyncThunk(
@@ -408,9 +527,10 @@ export const workerAsync = {
             if (target == undefined) throw new Error('invalid tree');
 
             const result = ParseVMRequest(computer, { ...session, target });
-
             appDispatch(remote_connect(result));
             await appDispatch(save_reference(result));
+            if (!(await ready())) appDispatch(close_remote());
+            else appDispatch(remote_ready());
         }
     ),
     peer_session_close: createAsyncThunk(
@@ -512,7 +632,7 @@ export const workerSlice = createSlice({
                 }
             },
             {
-                fetch: workerAsync.personal_worker_session_close,
+                fetch: workerAsync.unclaim_volume,
                 hander: (state, action) => {}
             },
             {
@@ -520,9 +640,13 @@ export const workerSlice = createSlice({
                 hander: (state, action) => {}
             },
             {
-                fetch: workerAsync.wait_and_claim_volume,
+                fetch: workerAsync.worker_reload,
                 hander: (state, action) => {}
             }
+            //{
+            //    fetch: workerAsync.wait_and_claim_volume,
+            //    hander: (state, action) => { }
+            //}
         );
     }
 });

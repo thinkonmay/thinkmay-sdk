@@ -4,7 +4,7 @@ import { TbLoader3 } from 'react-icons/tb';
 import { useAppSelector } from '../../../backend/reducers';
 import { Contents } from '../../../backend/reducers/locales';
 
-const TIME_RUN_OUT_OF_GPU = 200 * 1000; //sec
+const TIME_RUN_OUT_OF_GPU = 150 * 1000; //sec
 export function notify({
     data: { title, tips = true, loading = true, text, timeProcessing = 3.5 }
 }) {
@@ -12,6 +12,7 @@ export function notify({
     const [textTrans, setTextTrans] = useState('');
     const [isLaterThan15s, setIsLaterThan15s] = useState(false);
 
+    const [isShowTip, setShowTip] = useState(tips);
     useEffect(() => {
         let interval;
         if (title == 'Connect to PC') {
@@ -25,6 +26,7 @@ export function notify({
                 if (currentTime > laterTime) {
                     setIsLaterThan15s(true);
                     setTextTrans(t[Contents.RUN_OUT_OF_GPU_STOCK_NOTIFY]);
+                    setShowTip(false);
                     clearInterval(interval);
                 }
             }, 6000);
@@ -50,7 +52,7 @@ export function notify({
             {loading && !isLaterThan15s ? (
                 <LoadingProgressBar timeProcessing={timeProcessing} />
             ) : null}
-            {tips ? <Protip /> : null}
+            {isShowTip ? <Protip /> : null}
         </div>
     );
 }
@@ -101,11 +103,10 @@ const Protip = () => {
     ];
 
     useEffect(() => {
-        const interval = setInterval(() => {
-            const randomNumber = Math.floor(Math.random() * QUANTITY_TIP);
-
-            setCurrentTip(randomNumber);
-        }, 5 * 1000);
+        const interval = setInterval(
+            () => setCurrentTip(Math.floor(Math.random() * QUANTITY_TIP)),
+            5 * 1000
+        );
 
         return () => {
             clearInterval(interval);

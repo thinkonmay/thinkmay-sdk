@@ -69,7 +69,7 @@ const Taskbar = () => {
                 ) : !active ? (
                     <>
                         <div
-                            className="prtclk handcr my-1 p-2 hvlight flex gap-[8px] rounded"
+                            className="settingBtn prtclk handcr my-1 p-2 hvlight flex gap-[8px] rounded"
                             onClick={clickDispatch}
                             style={{ '--prefix': 'PANE' }}
                             data-action="user/user_delete"

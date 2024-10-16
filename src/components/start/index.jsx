@@ -4,10 +4,11 @@ import * as fa from 'react-icons/fa';
 import * as fi from 'react-icons/fi';
 import * as md from 'react-icons/md';
 import { MdArrowBack, MdOutlineClose } from 'react-icons/md';
-import { PiPauseBold } from 'react-icons/pi';
+import { RenderNode } from '../../../src-tauri/api';
 import * as Actions from '../../backend/actions';
 import { getTreeValue } from '../../backend/actions';
 
+import { isMobile } from '../../../src-tauri/core';
 import {
     MAX_BITRATE,
     MAX_FRAMERATE,
@@ -26,9 +27,10 @@ import {
     toggle_gamepad_setting,
     useAppSelector
 } from '../../backend/reducers';
-import { clickDispatch } from '../../backend/utils/dispatch';
-import { VirtualGamepad } from '../mobileControl/component/virtGamepad';
-import VirtKeyboard from '../mobileControl/component/virtKeyBoard';
+import {
+    clickDispatch,
+    customClickDispatch
+} from '../../backend/utils/dispatch';
 import { Icon } from '../shared/general';
 import './searchpane.scss';
 import './sidepane.scss';
@@ -41,19 +43,6 @@ export const SidePane = () => {
     const t = useAppSelector((state) => state.globals.translation);
     const [pnstates, setPnstate] = useState([]);
     const dispatch = appDispatch;
-    const [isMobile, setIsMobile] = useState(window.innerWidth < 1024);
-
-    useEffect(() => {
-        const handleResize = () => {
-            setIsMobile(window.innerWidth < 1024);
-        };
-
-        // Attach event listener
-        window.addEventListener('resize', handleResize);
-
-        // Detach event listener on cleanup
-        return () => window.removeEventListener('resize', handleResize);
-    }, []);
     useEffect(() => {
         const framerateSlider = document.querySelector('.framerateSlider');
         const bitrateSlider = document.querySelector('.bitrateSlider');
@@ -78,9 +67,9 @@ export const SidePane = () => {
 
     useEffect(() => {
         var tmp = [];
-        var states = isMobile
+        var states = isMobile()
             ? sidepane.mobileControl.buttons
-            : sidepane.quicks;
+            : sidepane.desktopControl.buttons;
         const mobileState = {
             gamePadOpen: !sidepane.mobileControl.gamePadHide,
             keyboardOpen: !sidepane.mobileControl.keyboardHide
@@ -106,7 +95,7 @@ export const SidePane = () => {
             >
                 <div className="mainContent">
                     <div className="quickSettings ">
-                        {isMobile ? (
+                        {isMobile() ? (
                             <MobileComponent pnstates={pnstates} />
                         ) : (
                             <DesktopComponent pnstates={pnstates} />
@@ -180,12 +169,6 @@ export const SidePane = () => {
                     <GamePadSetting></GamePadSetting>
                 </div>
             </div>
-            {isMobile ? (
-                <>
-                    <VirtKeyboard></VirtKeyboard>
-                    <VirtualGamepad></VirtualGamepad>
-                </>
-            ) : null}
         </>
     );
 };
@@ -217,9 +200,9 @@ const GamePadSetting = () => {
                     : 'gamepadSetting slide-in'
             }
         >
-            <div className="flex justify-between py-3 mx-[-12px]">
+            <div className="flex justify-between py-4 px-2 mb-[16px] mx-[-12px]">
                 <MdArrowBack
-                    fontSize={'1.2rem'}
+                    fontSize={'1.5rem'}
                     onClick={() => {
                         appDispatch(toggle_gamepad_setting());
                     }}
@@ -227,13 +210,11 @@ const GamePadSetting = () => {
 
                 <MdOutlineClose
                     onClick={handleClose}
-                    fontSize={'1.2rem'}
+                    fontSize={'1.5rem'}
                 ></MdOutlineClose>
             </div>
             <button
-                onClick={() => {
-                    appDispatch(toggle_gamepad());
-                }}
+                onClick={() => appDispatch(toggle_gamepad())}
                 className="w-full instbtn outline-none border-none py-3 px-6 text-[14px] rounded-lg mb-4"
             >
                 Đóng/mở gamepad ảo
@@ -280,7 +261,7 @@ const GamePadSetting = () => {
                 Đổi vị trí các nút
             </button>
 
-            {gamepadDraggable == 'draggable' ? (
+            {gamepadDraggable ? (
                 <>
                     <p className="text-[0.75rem] mt-1">
                         *kéo các nút để chỉnh vị trí
@@ -310,31 +291,30 @@ const GamePadSetting = () => {
     );
 };
 
-export const LogMaintain = () => {
-    return (
-        <div class="bg-red-600 absolute flex gap-4 items-center right-[50%] translate-x-[50%] top-0 text-white font-bold py-2 px-4 rounded">
-            <md.MdOutlineSettingsSuggest
-                fontSize={'1.5rem'}
-            ></md.MdOutlineSettingsSuggest>
-            Server is offline
-        </div>
-    );
-};
-
 function MobileComponent({ pnstates }) {
     const sidepane = useAppSelector((state) => state.sidepane);
     const t = useAppSelector((state) => state.globals.translation);
+    const shutdownable = useAppSelector(
+        (state) => new RenderNode(state.worker.data).data[0]?.info?.available
+    );
+
+    const renderList =
+        shutdownable == 'started'
+            ? sidepane.mobileControl.buttons
+            : sidepane.mobileControl.buttons.filter(
+                  (x) => x.action != 'shutDownVm'
+              );
 
     return (
         <>
             <div className="listBtn">
-                {sidepane.mobileControl.buttons.map((qk, idx) => (
+                {renderList.map((qk, idx) => (
                     <div key={idx} className="qkGrp">
                         <div
                             style={{
                                 ...qk.style
                             }}
-                            className="qkbtn handcr prtclk"
+                            className={`qkbtn handcr prtclk ${qk.id}`}
                             onClick={clickDispatch}
                             data-action={qk.action}
                             data-payload={qk.payload || qk.state}
@@ -394,17 +374,27 @@ function MobileComponent({ pnstates }) {
 function DesktopComponent({ pnstates }) {
     const t = useAppSelector((state) => state.globals.translation);
     const sidepane = useAppSelector((state) => state.sidepane);
+    const shutdownable = useAppSelector(
+        (state) => new RenderNode(state.worker.data).data[0]?.info?.available
+    );
+
+    const renderList =
+        shutdownable == 'started'
+            ? sidepane.desktopControl.buttons
+            : sidepane.desktopControl.buttons.filter(
+                  (x) => x.action != 'shutDownVm'
+              );
 
     return (
         <>
             <div className="listBtn">
-                {sidepane.quicks.map((qk, idx) => (
+                {renderList.map((qk, idx) => (
                     <div key={idx} className="qkGrp">
                         <div
                             style={{
                                 ...qk.style
                             }}
-                            className="qkbtn handcr prtclk"
+                            className={`qkbtn handcr prtclk ${qk.id}`}
                             onClick={clickDispatch}
                             data-action={qk.action}
                             data-payload={qk.payload || qk.state}
@@ -442,7 +432,7 @@ function DesktopComponent({ pnstates }) {
             <div className="shortcuts">
                 <hr className="mb-4" />
                 <div className="listBtn">
-                    {sidepane.shortcuts.map((qk, idx) => (
+                    {sidepane.desktopControl.shortcuts.map((qk, idx) => (
                         <div key={idx} className="qkGrp t">
                             <div
                                 style={{

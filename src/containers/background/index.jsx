@@ -3,12 +3,12 @@ import './back.scss';
 import './getstarted.scss';
 
 export const Background = () => {
-    const wall = useAppSelector((state) => state.wallpaper);
+    const src = useAppSelector((state) => state.wallpaper.src);
     return (
         <div
             className="background"
             style={{
-                backgroundImage: `url(img/wallpaper/${wall.src})`
+                backgroundImage: `url(img/wallpaper/${src})`
             }}
         ></div>
     );

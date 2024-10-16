@@ -2,7 +2,6 @@ import { useEffect } from 'react';
 import { ErrorBoundary } from 'react-error-boundary';
 import ReactModal from 'react-modal';
 import { UserEvents } from '../src-tauri/api';
-import { preload } from './backend/actions/background';
 import {
     appDispatch,
     direct_access,
@@ -24,6 +23,7 @@ import './wnapp.scss';
 
 function App() {
     ReactModal.setAppElement('#root');
+    const { id } = useAppSelector((state) => state.user);
     const remote = useAppSelector((x) => x.remote);
     const pointerLock = useAppSelector((state) => state.remote.pointer_lock);
 
@@ -47,7 +47,7 @@ function App() {
 
         const now = () => new Date().getTime();
         const start_fetch = now();
-        preload().finally(async () => {
+        PreloadBackground().finally(async () => {
             window.history.replaceState({}, document.title, '/' + '');
             const finish_fetch = now();
             const interval = finish_fetch - start_fetch;
@@ -101,9 +101,11 @@ function App() {
             appDispatch(set_fullscreen(fullscreen));
         };
 
-        const UIStateLoop = setInterval(handleState, 100);
-        return () => clearInterval(UIStateLoop);
-    }, [remote.fullscreen]);
+        const UIStateLoop = setInterval(handleState, 500);
+        return () => {
+            clearInterval(UIStateLoop);
+        };
+    }, [remote.fullscreen, tutorial]);
 
     const exitpointerlock = () => document.exitPointerLock();
 
@@ -123,7 +125,7 @@ function App() {
                 appDispatch(pointer_lock(havingPtrLock));
         };
 
-        const UIStateLoop = setInterval(handleState, 100);
+        const UIStateLoop = setInterval(handleState, 500);
         return () => {
             clearInterval(UIStateLoop);
         };
@@ -136,11 +138,11 @@ function App() {
                     {pointerLock ? null : (
                         <>
                             <Taskbar />
-                            <Status />
                             <SidePane />
                             <Popup />
                         </>
                     )}
+                    {remote.active && !pointerLock ? <Status /> : null}
                     {remote.active ? <Remote /> : <Background />}
                 </div>
             </ErrorBoundary>
