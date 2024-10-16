@@ -1,7 +1,6 @@
 import { PayloadAction, createAsyncThunk, createSlice } from '@reduxjs/toolkit';
 import { appDispatch, render_message, store } from '.';
 import { LOCAL } from '../../../src-tauri/api';
-import { DevEnv } from '../../../src-tauri/api/database';
 import { BuilderHelper, CacheRequest } from './helper';
 import { Contents } from './locales';
 
@@ -215,18 +214,14 @@ const listDesktopSettings = [
         action: 'shutDownVm',
         style: { backgroundColor: '#d92d20', color: '#f3f4f5' }
     },
-    ...(!DevEnv
-        ? []
-        : [
-              {
-                  ui: true,
-                  id: 'toggle_remote_async',
-                  src: 'FiVideoOff',
-                  name: [Contents.VIDEO_TOGGLE],
-                  state: 'active',
-                  action: 'toggle_remote_async'
-              }
-          ])
+    {
+        ui: true,
+        id: 'toggle_remote_async',
+        src: 'FiVideoOff',
+        name: [Contents.VIDEO_TOGGLE],
+        state: 'active',
+        action: 'toggle_remote_async'
+    }
 ];
 
 const initialState: Data = {
