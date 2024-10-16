@@ -1,148 +1,104 @@
-import { useMemo } from 'react';
+import { MdOutlinePowerSettingsNew } from 'react-icons/md';
+import { RenderNode } from '../../../src-tauri/api';
 import { changeTheme } from '../../backend/actions';
 import {
     appDispatch,
+    unclaim_volume,
     useAppSelector,
-    user_delete
+    user_delete,
+    wait_and_claim_volume
 } from '../../backend/reducers';
 import { Contents } from '../../backend/reducers/locales';
-import { externalLink } from '../../backend/utils/constant';
+import { formatDate } from '../../backend/utils/date';
 import LangSwitch from '../../containers/applications/apps/assets/Langswitch';
 import { Icon } from './general';
 import './index.scss';
+
 function UserInfo() {
-    const user = useAppSelector((state) => state.user);
-    const stats = useAppSelector((state) => state.user.stat);
+    const correctsite = useAppSelector(
+        (state) =>
+            (state.user.subscription.status == 'IMPORTED' ||
+                state.user.subscription.status == 'PAID') &&
+            state.user.subscription.correct_domain
+    );
+    const {
+        email,
+        subscription: {
+            node,
+            cluster,
+            plan,
+            total_usage,
+            limit_hour,
+            created_at,
+            ended_at,
+            template
+        }
+    } = useAppSelector((state) => state.user);
+    const shutdownable = useAppSelector(
+        (state) => new RenderNode(state.worker.data).data[0]?.info?.available
+    );
     const thm = useAppSelector((state) => state.setting.person.theme);
     var icon = thm == 'light' ? 'sun' : 'moon';
     const t = useAppSelector((state) => state.globals.translation);
 
-    const formatDate = (dateStr) => {
-        return new Date(dateStr).toLocaleDateString('en-GB', {
-            month: 'numeric',
-            day: 'numeric',
-            year: 'numeric'
-        });
-    };
-
-    const additionalTime = stats?.additional_time ?? 0;
-    const preTime = stats?.pre_remain_time ?? 0;
-    const planUsageTime = stats?.plan_hour ?? 0;
-    const _planName = stats?.plan_name ?? '';
-    //const totalTime = +planUsageTime + +additionalTime;
-
-    const totalTime = useMemo(() => {
-        let total = 0;
-        if (_planName == 'hour_01') {
-            total = +additionalTime;
-        } else {
-            total = +planUsageTime + +additionalTime;
-        }
-
-        return total;
-    }, [_planName]);
-
-    const renderPlanName = (planName) => {
-        let name = '';
-        if (planName == 'month_01') {
-            name = 'Cơ bản';
-        } else if (planName == 'month_02') {
-            name = 'Tiêu chuẩn';
-        } else if (planName == 'hour_01') {
-            name = 'Gói giờ ';
-        } else if (planName == 'hour_02') {
-            name = 'Gói giờ lẻ';
-        }
-        return name;
-    };
-
-    const PlanMonth = () => {
-        return (
+    const renderPlanName = {
+        month1: (
             <div className="restWindow w-full  flex flex-col ">
-                <div className="w-full flex gap-4 justify-between mt-1">
-                    <span className="text-left">{t[Contents.PLAN_NAME]}</span>
-                    <span>{renderPlanName(stats?.plan_name)}</span>
-                </div>
-                <div className="w-full flex gap-4 justify-between mt-1">
-                    <span className="text-left">{t[Contents.STARTAT]}</span>
-                    <span>{formatDate(stats?.start_time)}</span>
-                </div>
-                <div className="w-full flex gap-4 justify-between mt-1">
-                    <span className="text-left">{t[Contents.ENDAT]}</span>
-                    <span>{formatDate(stats?.end_time)}</span>
-                </div>
-                <div className="w-full flex gap-4 justify-between mt-3 items-end">
-                    <span className="text-left">
-                        {t[Contents.PLAN_USAGE_TIME]}
-                    </span>
-                    <span>{planUsageTime}h</span>
-                </div>
                 <div className="w-full flex gap-4 justify-between mt-1 items-end">
-                    <span className="text-left">
-                        {t[Contents.ADDITIONAL_TIME]}
-                    </span>
-                    <span>{additionalTime}h</span>
+                    <span className="text-left">{t[Contents.STARTAT]}</span>
+                    <span>{formatDate(created_at)}</span>
                 </div>
-                <hr className="my-[14px]" />
-                <div className="w-full flex gap-4 justify-between  mt-0 md:mt-[14px]">
-                    <span className="text-left">{t[Contents.TIME]}</span>
-                    <span>
-                        {stats?.usage_hour ? stats?.usage_hour.toFixed(1) : 0}h
-                        / {totalTime + 'h'}
-                    </span>
-                </div>
+                {ended_at ? (
+                    <div className="w-full flex gap-4 justify-between mt-1 items-end">
+                        <span className="text-left">{t[Contents.ENDAT]}</span>
+                        <span>{formatDate(ended_at)}</span>
+                    </div>
+                ) : null}
+                {correctsite ? (
+                    <div className="w-full flex gap-4 justify-between mt-4 items-end">
+                        <span className="text-left">{t[Contents.TIME]}</span>
+                        <span>
+                            {(+total_usage / 60).toFixed(2)}h / {limit_hour}h
+                        </span>
+                    </div>
+                ) : null}
+                {template && correctsite ? (
+                    <div className="w-full flex gap-4 justify-between mt-1 items-end">
+                        <span className="text-left">Template</span>
+                        <span>{template}</span>
+                    </div>
+                ) : null}
+                {cluster ? (
+                    <div className="w-full flex gap-4 justify-between mt-1 items-end">
+                        <span className="text-left">Domain</span>
+                        <span>{cluster}</span>
+                    </div>
+                ) : null}
+                {node && correctsite ? (
+                    <div className="w-full flex gap-4 justify-between mt-1 items-end">
+                        <span className="text-left">Node</span>
+                        <span>{node}</span>
+                    </div>
+                ) : null}
             </div>
-        );
-    };
-
-    const PlanHours = () => {
-        return (
+        ),
+        hour1: <div className="restWindow w-full  flex flex-col "></div>,
+        undefined: (
             <div className="restWindow w-full  flex flex-col ">
-                <div className="w-full flex gap-4 justify-between mt-1">
-                    <span className="text-left">{t[Contents.PLAN_NAME]}:</span>
-                    <span>{renderPlanName(stats?.plan_name)}</span>
-                </div>
-                {/*<div className="w-full flex gap-4 justify-between mt-1">
-                    <span className="text-left">
-                        {t[Contents.STARTAT]}
-                    </span>
-                    <span>{formatDate(stats?.start_time)}</span>
-                </div>
-                <div className="w-full flex gap-4 justify-between mt-1">
-                    <span className="text-left">
-                        {t[Contents.ENDAT]}
-                    </span>
-                    <span>{formatDate(stats?.end_time)}</span>
-                </div>*/}
                 <div className="w-full flex gap-4 justify-between mt-2 items-end">
-                    <span className="text-left">Time:</span>
-                    <span>{additionalTime + preTime}h</span>
-                </div>
-                <div className="w-full flex gap-4 justify-between  mt-2 ">
-                    <span className="text-left">{t[Contents.TIME]}:</span>
-                    <span className="text-right">
-                        {stats?.usage_hour ? stats?.usage_hour.toFixed(1) : 0}h
-                    </span>
-                </div>
-                <hr className="my-[14px]" />
-
-                <div className="w-full flex gap-4 justify-between  mt-0 md:mt-[14px]">
-                    <span className="text-left">Thời gian còn lại</span>
-                    <span className="text-right">
-                        {stats?.remain_time ? stats?.remain_time.toFixed(1) : 0}
-                        h
-                    </span>
+                    <span className="text-left">You haven't paid yet</span>
                 </div>
                 <p></p>
             </div>
-        );
+        )
     };
+
     return (
         <div className="userManager">
             <div className="stmenu  p-[14px] pt-2">
                 <div>
                     <div className="pinnedApps mt-[16px] text-center font-semibold pb-1 flex items-center justify-center gap-2">
-                        <span>{user.email ?? 'Admin'}</span>
+                        <span>{email ?? 'Admin'}</span>
                         <Icon
                             className="quickIcon"
                             //ui={true}
@@ -150,27 +106,13 @@ function UserInfo() {
                             width={14}
                         />
                     </div>
-                    {user.isExpired ? (
-                        <p className="text-red-600 mb-4 mt-1 text-right">
-                            Vui lòng{' '}
-                            <a
-                                href={externalLink.FACEBOOK_LINK}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="underline font-semibold"
-                            >
-                                gia hạn
-                            </a>{' '}
-                            để tiếp tục sử dụng
-                        </p>
-                    ) : null}
                 </div>
                 <div className="h-full flex flex-col p-2" data-dock="true">
                     <div className="w-full flex gap-4 justify-between my-[8px] ">
                         <span>Language</span>
                         <LangSwitch />
                     </div>
-                    <div className="w-full flex gap-4 justify-between mb-[12px] md:mb-[24px] ">
+                    <div className="w-full flex gap-4 justify-between mb-[12px] md:mb-[24px]">
                         <span>Theme</span>
                         <div
                             className="strBtn handcr prtclk"
@@ -181,13 +123,47 @@ function UserInfo() {
                                 ui={true}
                                 src={icon}
                                 width={14}
-                                //invert={pnstates[idx] ? true : null}
                             />
                         </div>
                     </div>
+                    <div className="w-full flex gap-4 justify-between mb-[12px] md:mb-[24px] ">
+                        {correctsite ? (
+                            shutdownable == 'started' ? (
+                                <>
+                                    <span>Shut down</span>
+                                    <div
+                                        className="strBtn handcr prtclk"
+                                        onClick={() =>
+                                            appDispatch(unclaim_volume())
+                                        }
+                                    >
+                                        <MdOutlinePowerSettingsNew
+                                            size={'1rem'}
+                                        />
+                                    </div>
+                                </>
+                            ) : shutdownable == 'ready' ? (
+                                <>
+                                    <span>Connect</span>
+                                    <div
+                                        className="strBtn handcr prtclk"
+                                        onClick={() =>
+                                            appDispatch(wait_and_claim_volume())
+                                        }
+                                    >
+                                        <Icon
+                                            className="quickIcon"
+                                            ui={true}
+                                            src={'power'}
+                                            width={14}
+                                        />
+                                    </div>
+                                </>
+                            ) : null
+                        ) : null}
+                    </div>
 
-                    {/* here */}
-                    {_planName.includes('hour') ? <PlanHours /> : <PlanMonth />}
+                    {renderPlanName[plan]}
                 </div>
             </div>
 

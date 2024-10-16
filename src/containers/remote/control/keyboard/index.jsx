@@ -1,46 +1,39 @@
 import { useState } from 'react';
 import Keyboard from 'react-simple-keyboard';
 import 'react-simple-keyboard/build/css/index.css';
-import { useShift } from '../../../../src-tauri/core/utils/convert';
-import {
-    appDispatch,
-    toggle_keyboard,
-    useAppSelector
-} from '../../../backend/reducers';
-import { keyboardCallback } from '../../../backend/reducers/remote';
+import { useShift } from '../../../../../src-tauri/core';
+import { keyboard } from '../../../../../src-tauri/singleton';
+import { appDispatch, toggle_keyboard } from '../../../../backend/reducers';
 import './index.scss';
 
-const VirtKeyboard = ({ close }) => {
+export const VirtKeyboard = () => {
     const [layoutName, setLayoutName] = useState('default');
-    const isClose = useAppSelector(
-        (state) => state.sidepane.mobileControl.keyboardHide
-    );
-    const handleKeyPress = (button) => {
-        if (button === 'Shift') {
-            setLayoutName(layoutName === 'default' ? 'shift' : 'default');
-            return;
-        }
-        const shift = useShift(button);
-        if (shift) keyboardCallback('Shift', 'down');
 
-        keyboardCallback(button, 'down');
-        keyboardCallback(button, 'up');
+    const handleKeyPress = async (button) => {
+        await keyboard(
+            ...(useShift(button)
+                ? [
+                      { val: 'Shift', action: 'down' },
+                      { val: button, action: 'down' },
+                      { val: button, action: 'up' },
+                      { val: 'Shift', action: 'up' }
+                  ]
+                : [
+                      { val: button, action: 'down' },
+                      { val: button, action: 'up' }
+                  ])
+        );
 
-        if (shift) keyboardCallback('Shift', 'up');
-
-        if (button === 'Enter' || button == 'Close') {
+        if ('vibrate' in navigator) navigator.vibrate([40, 30, 0]);
+        if (button === 'Enter' || button == 'Close')
             appDispatch(toggle_keyboard());
-        }
+        if (button === 'Shift')
+            setLayoutName(layoutName === 'default' ? 'shift' : 'default');
     };
 
     const handleKeyReleased = (button) => {};
     return (
-        <div
-            id="keyboard"
-            className={
-                !isClose ? 'virtKeyBoard slide-in' : 'virtKeyBoard slide-out'
-            }
-        >
+        <div id="keyboard" className={'virtKeyBoard slide-in'}>
             <Keyboard
                 layoutName={layoutName}
                 onKeyPress={handleKeyPress}
@@ -74,5 +67,3 @@ const VirtKeyboard = ({ close }) => {
         </div>
     );
 };
-
-export default VirtKeyboard;

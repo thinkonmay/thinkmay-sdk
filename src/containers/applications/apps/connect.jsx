@@ -1,7 +1,9 @@
 import {
     appDispatch,
+    app_toggle,
     useAppSelector,
-    wait_and_claim_volume
+    wait_and_claim_volume,
+    worker_reload
 } from '../../../backend/reducers';
 import {
     Icon,
@@ -9,66 +11,45 @@ import {
     ToolBar
 } from '../../../components/shared/general';
 
+import { RenderNode } from '../../../../src-tauri/api';
+import { login } from '../../../backend/actions';
 import { Contents } from '../../../backend/reducers/locales';
-import { RenderNode } from '../../../backend/utils/tree';
+import { detectBrowserAndOS } from '../../../backend/utils/detectBrower';
 import './assets/connect.scss';
 export const ConnectApp = () => {
     const t = useAppSelector((state) => state.globals.translation);
     const wnapp = useAppSelector((state) =>
         state.apps.apps.find((x) => x.id == 'connectPc')
     );
-    const stats = useAppSelector((state) => state.user.stat);
     const available = useAppSelector(
-        (state) =>
-            new RenderNode(state.worker.data).data[0]?.info?.available &&
-            !state.globals.maintenance?.isMaintaining
+        (state) => new RenderNode(state.worker.data).data[0]?.info?.available
     );
-    const user = useAppSelector((state) => state.user);
+    const paid = useAppSelector(
+        (state) =>
+            state.user.subscription.status == 'IMPORTED' ||
+            state.user.subscription.status == 'PAID'
+    );
+    const wrongsite = useAppSelector(
+        (state) =>
+            (state.user.subscription.status == 'IMPORTED' ||
+                state.user.subscription.status == 'PAID') &&
+            !state.user.subscription.correct_domain
+    );
+    const cluster = useAppSelector((state) =>
+        state.user.subscription.status == 'IMPORTED' ||
+        state.user.subscription.status == 'PAID'
+            ? state.user.subscription.cluster
+            : null
+    );
 
-    const emailSplit = () => {
-        let result = '';
-        result = user?.email?.split('@')?.at(0) || 'Your';
+    const { browser } = detectBrowserAndOS();
 
-        return result;
-    };
-
-    const renderPlanStorage = (planName) => {
-        let storage = '150GB + Cloud save';
-        if (planName == 'month_01') {
-            storage = '150GB + Cloud save';
-        }
-        if (planName == 'hour_01') {
-            storage = '130GB + Cloud save';
-        } else if (planName == 'month_02') {
-            storage = '200GB + Cloud save';
-        }
-
-        return storage;
-    };
-    const listSpec = [
-        {
-            name: 'GPU:',
-            text: 'Nvidia RTX 3060Ti'
-        },
-        {
-            name: 'RAM:',
-            text: '16Gb Ram'
-        },
-        {
-            name: 'CPU:',
-            text: 'Intel Xeon™ (up to 3.1 GHz) 8 vCores'
-        },
-        {
-            name: 'STORAGE:',
-            text: renderPlanStorage(stats?.plan_name)
-        },
-        {
-            name: 'OS:',
-            text: 'Window 10'
-        }
-    ];
+    const { email, id } = useAppSelector((state) => state.user);
+    const emailSplit = email?.split('@')?.at(0) || 'Bạn chưa đăng nhập';
     const connect = () => appDispatch(wait_and_claim_volume());
     const pay = () => appDispatch(app_toggle('payment'));
+    const loginNow = () => login('google');
+    const reload = () => appDispatch(worker_reload());
     return (
         <div
             className="connectToPcApp floatTab dpShad"
@@ -95,35 +76,65 @@ export const ConnectApp = () => {
                     <div className="content">
                         <div className="title">
                             <Icon src="monitor"></Icon>
-                            {emailSplit()} PC
+                            {emailSplit}
                         </div>
 
                         <div className="containerSpec">
-                            <div className="flex flex-col gap-3">
-                                {listSpec.map((spec) => (
-                                    <div key={spec.text} className="spec">
-                                        <b className="">{spec.name}</b>
-                                        {spec.text}
+                            {!browser.includes('Chrome') ? (
+                                <div className="flex flex-col gap-3">
+                                    <div className="spec my-5">
+                                        {t[Contents.SUGGEST_BROWSER]}
                                     </div>
-                                ))}
-                                <div className="spec mt-4">
-                                    {t[Contents.SUGGEST_BROWSER]}
                                 </div>
-                            </div>
+                            ) : null}
 
-                            {available ? (
+                            {id == 'unknown' ? (
+                                <button
+                                    onClick={loginNow}
+                                    className="instbtn connectBtn12 connectBtn"
+                                >
+                                    Đăng nhập
+                                </button>
+                            ) : available == 'ready' ||
+                              available == 'started' ? (
                                 <button
                                     onClick={connect}
-                                    className="instbtn connectBtn"
+                                    className="instbtn connectBtn12 connectBtn"
                                 >
-                                    Connect
+                                    {available == 'ready'
+                                        ? 'Khởi tạo'
+                                        : 'Kết nối'}
                                 </button>
+                            ) : available == 'not_ready' ? (
+                                <button
+                                    disabled
+                                    className="instbtn connectBtn12 connectBtn"
+                                >
+                                    Máy đang được khởi tạo
+                                </button>
+                            ) : paid ? (
+                                wrongsite ? (
+                                    <a
+                                        href={`https://${cluster}`}
+                                        target="_self"
+                                        className="instbtn connectBtn12 connectBtn"
+                                    >
+                                        {cluster}
+                                    </a>
+                                ) : (
+                                    <button
+                                        onClick={reload}
+                                        className="instbtn connectBtn12 connectBtn"
+                                    >
+                                        Reload
+                                    </button>
+                                )
                             ) : (
                                 <button
                                     onClick={pay}
-                                    className="instbtn connectBtn"
+                                    className="instbtn connectBtn12 connectBtn"
                                 >
-                                    Pay Now
+                                    Thanh toán
                                 </button>
                             )}
                         </div>

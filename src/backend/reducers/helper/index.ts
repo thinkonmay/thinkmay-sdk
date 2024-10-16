@@ -8,6 +8,7 @@ import {
 
 import Dexie, { Table } from 'dexie';
 import { appDispatch, popup_close, popup_open } from '..';
+import { DevEnv } from '../../../../src-tauri/api/database';
 import { formatError } from '../../utils/formatErr';
 class TodoDB extends Dexie {
     data!: Table<{ timestamp: number; id: string; raw: any }, string>;
@@ -64,7 +65,7 @@ export async function CacheRequest<T>(
     sec: number,
     req: () => Promise<T>
 ): Promise<T> {
-    sec = window.location.href.includes('localhost') ? 10 * 60 : sec;
+    sec = DevEnv ? 10 * 60 : sec;
     const store = async (raw: any, timestamp: number) => {
         if (db == null) {
             localStorage.setItem(
@@ -121,7 +122,9 @@ const filterActions = [
     'fetch_user',
     'fetch_store',
     'fetch_under_maintenance',
-    'fetch_message'
+    'fetch_message',
+    'fetch_subscription',
+    'save_reference'
 ];
 
 const isFilterAction = (acctionType: string) => {
@@ -243,7 +246,7 @@ export async function BuilderHelper<T, U, V>(
                             type: 'complete',
                             data: {
                                 success: true,
-                                content: 'request completed'
+                                content: 'Request completed!'
                             }
                         })
                     );

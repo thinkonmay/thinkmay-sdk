@@ -2,73 +2,26 @@ import { createAsyncThunk, createSlice, PayloadAction } from '@reduxjs/toolkit';
 import {
     appDispatch,
     close_remote,
-    hard_reset,
     popup_close,
     popup_open,
     remote_connect,
+    remote_ready,
     store,
     toggle_remote
 } from '.';
-import { RemoteDesktopClient } from '../../../src-tauri/core/app';
-import { AxisType } from '../../../src-tauri/core/models/hid.model';
-import { EventCode, HIDMsg } from '../../../src-tauri/core/models/keys.model';
-import { convertJSKey } from '../../../src-tauri/core/utils/convert';
-import { sleep } from '../utils/sleep';
-import { isMobile } from './../utils/checking';
+import { getDomainURL, POCKETBASE } from '../../../src-tauri/api';
+import { EventCode, isMobile } from '../../../src-tauri/core';
+import {
+    CLIENT,
+    MAX_BITRATE,
+    MAX_FRAMERATE,
+    MIN_BITRATE,
+    MIN_FRAMERATE,
+    PINGER,
+    ready,
+    SIZE
+} from '../../../src-tauri/singleton';
 import { BuilderHelper } from './helper';
-import { CAUSE, getDomainURL, pb } from '../../../src-tauri/api/createClient';
-
-const size = () =>
-    client != null
-        ? client.video.video.videoHeight * client.video.video.videoWidth
-        : 1920 * 1080;
-export const MAX_BITRATE = () => (15000 / (1920 * 1080)) * size();
-export const MIN_BITRATE = () => (1000 / (1920 * 1080)) * size();
-export const MAX_FRAMERATE = 120; //240
-export const MIN_FRAMERATE = 40;
-
-export let client: RemoteDesktopClient | null = null;
-export const assign = (fun: () => RemoteDesktopClient) => {
-    if (client != null) client.Close();
-    client = fun();
-};
-
-let pinger = async () => {};
-export const set_pinger = (fun: () => Promise<void>) => {
-    pinger = fun;
-};
-
-export const ready = async () => {
-    appDispatch(
-        popup_open({
-            type: 'notify',
-            data: {
-                loading: true
-            }
-        })
-    );
-
-    let start = new Date().getTime();
-    while (client == null || !client?.ready()) {
-        const now = new Date().getTime();
-        if (now - start > 60 * 1000) {
-            appDispatch(popup_close());
-            appDispatch(close_remote());
-            throw new Error(
-                JSON.stringify({
-                    message: 'remote timeout connect to machine',
-                    code: CAUSE.REMOTE_TIMEOUT
-                })
-            );
-        }
-
-        await new Promise((r) => setTimeout(r, 1000));
-    }
-    if (isMobile) client.PointerVisible(true);
-
-    appDispatch(remoteSlice.actions.internal_sync());
-    appDispatch(popup_close());
-};
 
 export type AuthSessionResp = {
     id: string;
@@ -90,6 +43,7 @@ export type Metric = {
 type Data = {
     tracker_id?: string;
     active: boolean;
+    ready: boolean;
     fullscreen: boolean;
     pointer_lock: boolean;
     relative_mouse: boolean;
@@ -119,6 +73,7 @@ const initialState: Data = {
     local: false,
     focus: true,
     active: false,
+    ready: false,
     scancode: false,
     no_strict_timing: false,
     fullscreen: false,
@@ -137,136 +92,24 @@ const initialState: Data = {
     realbitrate: 0
 };
 
-function VirtualGamepadButtonSlider(isDown: boolean, index: number) {
-    if (index == 6 || index == 7) {
-        // slider
-        client?.SendRawHID(
-            new HIDMsg(EventCode.GamepadSlide, {
-                gamepad_id: 0,
-                index: index,
-                val: !isDown ? 0 : 1
-            }).ToString()
-        );
-        return;
-    }
-
-    client?.SendRawHID(
-        new HIDMsg(
-            !isDown ? EventCode.GamepadButtonDown : EventCode.GamepadButtonUp,
-            {
-                gamepad_id: 0,
-                index: index
-            }
-        ).ToString()
-    );
-}
-
-function VirtualGamepadAxis(x: number, y: number, type: AxisType) {
-    let axisx, axisy: number;
-    switch (type) {
-        case 'left':
-            axisx = 0;
-            axisy = 1;
-            break;
-        case 'right':
-            axisx = 2;
-            axisy = 3;
-            break;
-    }
-
-    client?.SendRawHID(
-        new HIDMsg(EventCode.GamepadAxis, {
-            gamepad_id: 0,
-            index: axisx,
-            val: x
-        }).ToString()
-    );
-    client?.SendRawHID(
-        new HIDMsg(EventCode.GamepadAxis, {
-            gamepad_id: 0,
-            index: axisy,
-            val: y
-        }).ToString()
-    );
-}
-
-const trigger = (code: EventCode, jsKey: string) => {
-    const key = convertJSKey(jsKey, 0);
-    if (key == undefined) return;
-    const data = new HIDMsg(code, { key }).ToString();
-    client?.SendRawHID(data);
-};
-
 export function WindowD() {
-    if (client == null) return;
-    trigger(EventCode.KeyDown, 'lwin');
-    trigger(EventCode.KeyDown, 'd');
-    trigger(EventCode.KeyUp, 'd');
-    trigger(EventCode.KeyUp, 'lwin');
-}
-
-export async function keyboardCallback(val, action: 'up' | 'down') {
-    if ('vibrate' in navigator && action == 'down') {
-        navigator.vibrate([40, 30, 0]);
-    }
-
-    if (client == null) return;
-    trigger(action == 'up' ? EventCode.KeyUp : EventCode.KeyDown, val);
-}
-export async function gamePadBtnCallback(index: number, type: 'up' | 'down') {
-    if ('vibrate' in navigator && type == 'down') {
-        navigator.vibrate([40, 30, 0]);
-    }
-    if (client == null) return;
-    VirtualGamepadButtonSlider(type == 'down', index);
-}
-
-export async function gamepadAxisCallback(
-    x: number,
-    y: number,
-    type: 'left' | 'right'
-) {
-    if (client == null) return;
-    VirtualGamepadAxis(x, y, type);
+    if (CLIENT == null) return;
+    CLIENT.VirtualKeyboard(
+        { code: EventCode.KeyDown, jsKey: 'lwin' },
+        { code: EventCode.KeyDown, jsKey: 'd' },
+        { code: EventCode.KeyUp, jsKey: 'd' },
+        { code: EventCode.KeyUp, jsKey: 'lwin' }
+    );
 }
 
 export const setClipBoard = async (content: string) => {
-    if (client == null) return;
-
-    client?.SetClipboard(content);
+    await CLIENT?.SetClipboard(content);
 };
-
-export function openRemotePage(
-    url: string,
-    options?: {
-        app_name?: string;
-        demoSession?: boolean;
-    }
-) {
-    const Url = new URL(url);
-    Url.searchParams.set('no_stretch', 'true');
-    if (store.getState().remote.scancode)
-        Url.searchParams.set('scancode', `true`);
-    if (options?.demoSession) Url.searchParams.set('demo', `true`);
-    if (options?.app_name) Url.searchParams.set('page', options.app_name);
-
-    const open = Url.toString();
-    if (isMobile()) {
-        document.location.href = open;
-        return;
-    }
-
-    setTimeout(() => {
-        window.open(open, '_blank');
-    }, 0);
-}
-
 export const remoteAsync = {
     check_worker: async () => {
         if (!store.getState().remote.active) return;
         else if (store.getState().remote.local) return;
-        else if (client == null) return;
-        else if (!client.ready()) return;
+        else if (CLIENT == null || !CLIENT?.ready()) return;
 
         // TODO
     },
@@ -274,10 +117,10 @@ export const remoteAsync = {
         const state = store.getState();
         const { remote, popup } = state;
 
-        if (!remote.active || client == null) return;
+        if (!remote.active || CLIENT == null) return;
 
         const lastactive = () =>
-            Math.min(client?.hid?.last_active(), client?.touch?.last_active());
+            Math.min(CLIENT?.hid?.last_active(), CLIENT?.touch?.last_active());
 
         if (lastactive() > 5 * 60) {
             if (popup.data_stack.length > 0) return;
@@ -299,19 +142,18 @@ export const remoteAsync = {
             appDispatch(popup_close());
         }
 
-        pinger();
+        PINGER();
     },
     sync: async () => {
         if (!store.getState().remote.active) return;
-        else if (client == null) return;
-        else if (!client.ready()) return;
+        else if (CLIENT == null || !CLIENT?.ready()) return;
 
         appDispatch(
             remoteSlice.actions.metrics({
-                packetloss: client.Metrics.video.packetloss.last,
-                idrcount: client.Metrics.video.idrcount.last,
-                bitrate: client.Metrics.video.bitrate.persecond,
-                fps: client.Metrics.video.frame.persecond
+                packetloss: CLIENT.Metrics.video.packetloss.last,
+                idrcount: CLIENT.Metrics.video.idrcount.last,
+                bitrate: CLIENT.Metrics.video.bitrate.persecond,
+                fps: CLIENT.Metrics.video.frame.persecond
             })
         );
 
@@ -320,9 +162,11 @@ export const remoteAsync = {
                 store.getState().remote.bitrate ||
             store.getState().remote.prev_framerate !=
                 store.getState().remote.framerate ||
-            store.getState().remote.prev_framerate != size()
+            store.getState().remote.prev_framerate != SIZE()
         )
             appDispatch(remoteSlice.actions.internal_sync());
+
+        if (isMobile()) await CLIENT.PointerVisible(true);
     },
     direct_access: createAsyncThunk(
         'direct_access',
@@ -336,7 +180,7 @@ export const remoteAsync = {
                     {
                         method: 'GET',
                         headers: {
-                            Authorization: pb.authStore.token,
+                            Authorization: POCKETBASE.authStore.token,
                             'Content-type': 'application/json'
                         }
                     }
@@ -348,6 +192,8 @@ export const remoteAsync = {
                     throw new Error('not found any query');
 
                 appDispatch(remote_connect({ ...(data.items[0] as any) }));
+                if (!(await ready())) appDispatch(close_remote());
+                else appDispatch(remote_ready());
             } catch (e) {
                 throw new Error('Failed to query ' + e);
             }
@@ -361,7 +207,7 @@ export const remoteAsync = {
             rtc_config: RTCConfiguration;
         }): Promise<string> => {
             const token = crypto.randomUUID();
-            await pb.collection('reference').create({ ...info, token });
+            await POCKETBASE.collection('reference').create({ ...info, token });
             return token;
         }
     ),
@@ -376,26 +222,24 @@ export const remoteAsync = {
     }),
     toggle_remote_async: createAsyncThunk(
         'toggle_remote_async',
-        async (_: void, { getState }) => {
-            if (!store.getState().remote.active) {
-                appDispatch(toggle_remote());
-                await sleep(2000);
-                return;
-            }
-
+        async (_: void, {}) => {
             appDispatch(toggle_remote());
-
-            return;
         }
     ),
     hard_reset_async: createAsyncThunk(
         'hard_reset_async',
         async (_: void, { getState }) => {
-            if (client == null) return;
+            if (CLIENT == null) return;
 
-            appDispatch(hard_reset());
+            appDispatch(
+                popup_open({
+                    type: 'notify',
+                    data: { loading: true, title: 'Connect to PC' }
+                })
+            );
+            await CLIENT.HardReset();
             await ready();
-            return;
+            appDispatch(popup_close());
         }
     )
 };
@@ -426,6 +270,10 @@ export const remoteSlice = createSlice({
 
             state.active = true;
             state.fullscreen = true;
+            state.ready = false;
+        },
+        remote_ready: (state) => {
+            state.ready = true;
         },
         share_reference: (state) => {
             const token = state.ref;
@@ -435,7 +283,7 @@ export const remoteSlice = createSlice({
         },
         loose_focus: (state) => {
             state.focus = false;
-            client?.hid?.ResetKeyStuck();
+            CLIENT?.hid?.ResetKeyStuck();
         },
         have_focus: (state) => {
             state.focus = true;
@@ -444,34 +292,23 @@ export const remoteSlice = createSlice({
             state.active = false;
             state.auth = undefined;
             state.fullscreen = false;
-            setTimeout(() => client?.Close(), 100);
+            CLIENT?.Close();
         },
         toggle_remote: (state) => {
             if (!state.active) {
                 state.fullscreen = true;
             } else {
                 state.fullscreen = false;
-                setTimeout(() => client?.Close(), 100);
+                CLIENT?.Close();
             }
             state.active = !state.active;
-        },
-        hard_reset: () => {
-            if (client == null) return;
-
-            client?.HardReset();
-        },
-        strict_timing_toggle: (state) => {
-            state.no_strict_timing = !state.no_strict_timing;
-            if (client)
-                client.Metrics.video.idrcount.strict_timing =
-                    !state.no_strict_timing;
         },
         strict_timing: (state, action: PayloadAction<boolean>) => {
             state.no_strict_timing = action.payload;
         },
         scancode_toggle: (state) => {
             state.scancode = !state.scancode;
-            if (client) client.hid.scancode = state.scancode;
+            if (CLIENT) CLIENT.hid.scancode = state.scancode;
         },
         scancode: (state, action: PayloadAction<boolean>) => {
             state.scancode = action.payload;
@@ -490,8 +327,8 @@ export const remoteSlice = createSlice({
         },
         pointer_lock: (state, action: PayloadAction<boolean>) => {
             state.pointer_lock = action.payload;
-            if (client == null) return;
-            client.PointerVisible(action.payload);
+            if (CLIENT == null) return;
+            CLIENT.PointerVisible(action.payload);
         },
         relative_mouse: (state) => {
             state.relative_mouse = !state.relative_mouse;
@@ -513,10 +350,10 @@ export const remoteSlice = createSlice({
         internal_sync: (state) => {
             if (
                 (state.bitrate != state.prev_bitrate ||
-                    state.prev_size != size()) &&
-                size() > 0
+                    state.prev_size != SIZE()) &&
+                SIZE() > 0
             ) {
-                client?.ChangeBitrate(
+                CLIENT?.ChangeBitrate(
                     Math.round(
                         ((MAX_BITRATE() - MIN_BITRATE()) / 100) *
                             state.bitrate +
@@ -524,11 +361,11 @@ export const remoteSlice = createSlice({
                     )
                 );
                 state.prev_bitrate = state.bitrate;
-                state.prev_size = size();
+                state.prev_size = SIZE();
             }
 
             if (state.framerate != state.prev_framerate) {
-                client?.ChangeFramerate(
+                CLIENT?.ChangeFramerate(
                     Math.round(
                         ((MAX_FRAMERATE - MIN_FRAMERATE) / 100) *
                             state.framerate +
@@ -554,8 +391,6 @@ export const remoteSlice = createSlice({
                     const { bitrate, framerate } = action.payload;
                     state.bitrate = bitrate;
                     state.framerate = framerate;
-
-                    if (isMobile()) return;
                 }
             },
             {

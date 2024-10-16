@@ -1,176 +1,74 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
+import { MdArrowDropDown, MdArrowRight } from 'react-icons/md';
+import { login } from '../../../backend/actions';
 import {
     appDispatch,
+    get_payment,
     popup_open,
     useAppSelector
 } from '../../../backend/reducers';
-import { LazyComponent, ToolBar } from '../../../components/shared/general';
-import './assets/store.scss';
-
-import { FUNDING } from '@paypal/react-paypal-js';
-import { UserEvents } from '../../../../src-tauri/api/analytics';
 import {
-    createPaymentLink,
-    wrapperAsyncFunction
-} from '../../../backend/actions';
-import { Contents } from '../../../backend/reducers/locales';
-import { Image } from '../../../components/shared/general';
+    Image,
+    LazyComponent,
+    ToolBar
+} from '../../../components/shared/general';
+import './assets/store.scss';
+import { UserEvents } from '../../../../src-tauri/api';
 
-const mb = '970422';
-const account_id = '1502200344444';
-const account_owner = 'DO VAN DAT';
-const model = 'BsXBiU7'; //'sS1SemI'
+const listSubs = [
+    {
+        highlight: false,
+        title: 'Gói giờ',
+        price_in_vnd: '8',
+        under_price: 'Mua tối thiểu 5 giờ mỗi lần',
 
-const FUNDING_SOURCES = [FUNDING.PAYPAL, FUNDING.CARD, FUNDING.PAYU];
-const initialOptions = {
-    'client-id':
-        'AUGjxD_5EwowYxfVHGQSqtBsy0G7F05x850-iRLbbZZFTAZxYXn2ois63R1hZyA0ufbDch1I4lv9XUAZ',
-    'enable-funding': '',
-    vault: true
-};
-
+        name: 'hour2',
+        period: 'h',
+        bonus: [
+            'Chơi sẵn các game trong store games',
+            'Không lưu dữ liệu sau khi tắt máy'
+        ],
+        hoursChoose: 5
+    },
+    {
+        highlight: true,
+        title: 'Tiết kiệm',
+        price_in_vnd: '299',
+        total_time: '150',
+        under_price: 'Giới hạn 150h sử dụng trong tháng',
+        name: 'month1',
+        period: 'tháng',
+        bonus: [
+            'RTX 3060TI',
+            '16GB ram',
+            '150GB dung lượng riêng, Cloud-save',
+            'Không giới hạn thời gian mỗi session',
+            'Có hàng chờ'
+        ],
+        storage: ['50GB: 70k/tháng', '100GB: 120k/tháng']
+    },
+    {
+        highlight: false,
+        title: 'Unlimited',
+        price_in_vnd: '1699',
+        period: 'tháng',
+        total_time: 'Không giới hạn',
+        under_price: 'Không giới hạn giờ sử dụng',
+        name: 'month2',
+        bonus: [
+            'Sở hữu PC riêng',
+            'Không hàng chờ',
+            'Cấu hình giống gói tháng',
+            '250GB dung lượng riêng, cloud-save',
+            'Không giới hạn thời gian mỗi session'
+        ]
+    }
+];
 export const PaymentApp = () => {
     const wnapp = useAppSelector((state) =>
         state.apps.apps.find((x) => x.id == 'payment')
     );
-    const stat = useAppSelector((state) => state.user.stat);
-    const user = useAppSelector((state) => state.user);
-    const [listSubs, setListSubs] = useState([
-        {
-            highlight: false,
-            title: 'Gói giờ',
-            price_in_vnd: '8',
-            //total_time: '110',
-            //under_price: 'Lần đầu, bạn cần mua ít nhất 20h.',
 
-            name: 'hour_02',
-            period: 'h',
-            bonus: [
-                'Chơi sẵn các game trong store games',
-                'Không lưu dữ liệu sau khi tắt máy'
-            ],
-            hoursChoose: 5
-        },
-        {
-            highlight: true,
-            title: 'Tiết kiệm',
-            price_in_vnd: '299',
-            total_time: '150',
-            under_price: 'Giới hạn 150h sử dụng trong tháng',
-            name: 'month_01',
-            period: 'tháng',
-            bonus: [
-                'Sở hữu PC riêng, dữ liệu cá nhân',
-                'Có lưu dữ liệu sau khi tắt máy',
-                'RTX 3060TI',
-                '16GB ram',
-                '150GB dung lượng',
-                'Không giới hạn thời gian mỗi session'
-            ],
-            storage: ['50GB: 70k/tháng', '100GB: 120k/tháng']
-        },
-        {
-            highlight: false,
-            title: 'Unlimited',
-            price_in_vnd: '1699',
-            period: 'tháng',
-            total_time: 'Không giới hạn',
-            under_price: 'Không giới hạn giờ sử dụng',
-            name: 'unlimited_01',
-            bonus: [
-                'Không hàng chờ',
-                'Cấu hình giống gói tháng',
-                '250GB dung lượng',
-                'Không giới hạn thời gian mỗi session'
-            ]
-        }
-    ]);
-
-    const [isAvailableHourSub, setAvailableHourSub] = useState(false);
-    const [iframe, setIframe] = useState('');
-    const [paypage, setPaypage] = useState(null);
-    const [subChoose, setSubChoose] = useState(null);
-    const payment = async (price_in_vnd) => {
-        setPaypage(price_in_vnd);
-    };
-
-    const [hoursChoose, setHoursChoose] = useState(5);
-
-    const handleChooseSub = async (sub) => {
-        if (hoursChoose < 5 && sub.name == 'hour_02') {
-            appDispatch(
-                popup_open({
-                    type: 'complete',
-                    data: {
-                        success: false,
-                        content: 'Cần mua ít nhất 5h'
-                    }
-                })
-            );
-            return;
-        }
-        if (isRejectHourSub(sub.name)) {
-            appDispatch(
-                popup_open({
-                    type: 'complete',
-                    data: {
-                        success: false,
-                        content:
-                            'Gói hiện tại đang đóng.Quý khách vui lòng quay lại sau!'
-                    }
-                })
-            );
-            return;
-        }
-        //payment(
-        //    sub.price_in_vnd
-        //);
-        setSubChoose({
-            ...sub,
-            hoursChoose
-        });
-
-        const inputs = {
-            buyerEmail: user.email,
-            items: [
-                {
-                    name: sub.name,
-                    price: +sub.price_in_vnd * 1000,
-                    quantity: sub.name == 'hour_02' ? +hoursChoose : 1
-                }
-            ]
-        };
-        wrapperAsyncFunction(
-            async () => window.open(await createPaymentLink(inputs), '_self'),
-            {
-                title: 'Creating Payment',
-                tips: false,
-                timeProcessing: 0.5
-            }
-        );
-    };
-
-    const isOldUser = () => {
-        let check = false;
-        check =
-            user?.stat?.plan_name == 'hour_02' &&
-            user?.stat?.plan_name == 'month_01' &&
-            user?.stat?.plan_name == 'unlimited_01';
-        return check;
-    };
-
-    const isRejectHourSub = (subName) => {
-        let check = false;
-        check =
-            subName == 'hour_02' &&
-            !isAvailableHourSub &&
-            user?.stat?.plan_name !== 'hour_02';
-
-        return check;
-        //let check = false;
-        //check = !user?.stat?.plan_name || subName == 'hour_02';
-        //return check;
-    };
     return (
         <div
             className="paymentApp floatTab dpShad"
@@ -191,387 +89,281 @@ export const PaymentApp = () => {
             />
             <div className="windowScreen wrapperPayment">
                 <LazyComponent show={!wnapp.hide}>
-                    {paypage != null ? (
-                        <Payment
-                            price={paypage}
-                            onClose={() => setPaypage(null)}
-                            subInfo={subChoose}
-                            iframe={iframe}
-                        />
-                    ) : (
-                        <div className=" md:!justify-evenly px-0 paymentContent win11Scroll">
-                            {listSubs.map((sub, index) => (
-                                <div key={index} className="sub relative">
-                                    {sub.highlight ? (
-                                        <div className="absolute rounded-[36px] bg-amber-600 absolute inset-0 z-[-1] w-[102%]  top-[-37px] bottom-[-6px] left-[-1%]">
-                                            <p className="text-[16px] leading-4 text-center py-2 mt-[4px] text-background">
-                                                Gói phổ biến nhất
-                                            </p>
-                                        </div>
-                                    ) : null}
-
-                                    <div className="flex flex-col overflow-hidden border h-full rounded-[4px]">
-                                        <div className="bg-surface-100 px-4 xl:px-4 2xl:px-8 pt-6 rounded-tr-[4px] rounded-tl-[4px] ">
-                                            <div className="flex items-center gap-2">
-                                                <div className="flex items-center gap-2">
-                                                    <p className=" uppercase flex items-center gap-4 font-mono">
-                                                        {sub.title}
-                                                    </p>
-                                                </div>
-                                            </div>
-
-                                            <hr className="border-[#504646]" />
-                                            <div className=" text-foreground flex items-center text-lg min-h-[116px]">
-                                                <div className="flex flex-col gap-1">
-                                                    <div className="flex items-end gap-2">
-                                                        <div>
-                                                            <div className="flex items-end">
-                                                                {
-                                                                    <>
-                                                                        <h3 className="mt-2 gradient-text-500 text-3xl pb-1 uppercase font-mono text-brand-600">
-                                                                            {sub.price_in_vnd
-                                                                                ? `${sub.price_in_vnd}k VND`
-                                                                                : `\$${sub.price}`}
-                                                                        </h3>
-                                                                        <p className="text-foreground-lighter mb-1.5 ml-1 text-[13px] leading-4">
-                                                                            /{' '}
-                                                                            {
-                                                                                sub.period
-                                                                            }{' '}
-                                                                        </p>
-                                                                    </>
-                                                                }
-                                                            </div>
-                                                            <p className="-mt-2">
-                                                                <span className="bg-background text-brand-600 border shadow-sm rounded-md bg-opacity-30 py-0.5 px-2 text-[13px] leading-4">
-                                                                    {
-                                                                        sub.under_price
-                                                                    }
-                                                                </span>
-                                                            </p>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <hr className="border-[#504646]" />
-                                        </div>
-                                        <div className="border-default bg-surface-100 flex h-full rounded-bl-[4px] rounded-br-[4px] flex-1 flex-col px-8 xl:px-4 2xl:px-8 py-6 ">
-                                            <p className="text-foreground-light text-[13px] mt-2 mb-2">
-                                                Chi tiết:
-                                            </p>
-
-                                            {sub.bonus.map((x, i) => (
-                                                <ul
-                                                    key={i}
-                                                    role="list"
-                                                    className="text-[13px] text-foreground-lighter"
-                                                >
-                                                    <li className="flex items-center py-[8px] first:mt-0">
-                                                        <svg
-                                                            xmlns="http://www.w3.org/2000/svg"
-                                                            width="18"
-                                                            height="18"
-                                                            viewBox="0 0 24 24"
-                                                            fill="none"
-                                                            stroke="currentColor"
-                                                            strokeWidth="3"
-                                                            strokeLinecap="round"
-                                                            strokeLinejoin="round"
-                                                            className="sbui-icon text-brand h-4 w-4"
-                                                            aria-hidden="true"
-                                                        >
-                                                            <polyline points="20 6 9 17 4 12"></polyline>
-                                                        </svg>
-                                                        <span className="text-foreground mb-0 ml-3 text-[0.8rem] ">
-                                                            {x}
-                                                        </span>
-                                                    </li>
-                                                </ul>
-                                            ))}
-
-                                            {sub.storage ? (
-                                                <p className="text-foreground-light text-[13px] mt-8 mb-2">
-                                                    Dung lượng mua thêm:
-                                                </p>
-                                            ) : null}
-
-                                            <ul
-                                                role="list"
-                                                className="list-decimal text-[13px] text-foreground-lighter"
-                                            >
-                                                {sub.storage?.map((x, i) => (
-                                                    <li
-                                                        key={i}
-                                                        className="flex items-center py-[8px] first:mt-0"
-                                                    >
-                                                        <span className="text-foreground mb-0 ml-3 text-[0.8rem] ">
-                                                            {x}
-                                                        </span>
-                                                    </li>
-                                                ))}
-                                            </ul>
-
-                                            <div className="flex flex-col gap-2 mt-auto prose">
-                                                {sub.name == 'hour_02' &&
-                                                !isRejectHourSub(sub.name) ? (
-                                                    <div className="flex gap-3 items-center ">
-                                                        <b>Số giờ mua</b>
-                                                        <input
-                                                            value={hoursChoose}
-                                                            onChange={(e) =>
-                                                                setHoursChoose(
-                                                                    e.target
-                                                                        .value
-                                                                )
-                                                            }
-                                                            className="p-2 rounded-sm"
-                                                            type="number"
-                                                            min={5}
-                                                            name=""
-                                                            id=""
-                                                        />
-                                                    </div>
-                                                ) : null}
-                                                <div className="space-y-2">
-                                                    <p className="text-[13px] whitespace-pre-wrap">
-                                                        {/* Free projects are paused after 1 week of inactivity. */}
-                                                    </p>
-                                                </div>
-
-                                                <button
-                                                    onClick={() =>
-                                                        handleChooseSub(sub)
-                                                    }
-                                                    type="button"
-                                                    className={`border-none h-[48px] relative cursor-pointer 
-                                                            space-x-2 text-center font-regular ease-out duration-200 rounded-md 
-                                                            outline-none transition-all outline-0 focus-visible:outline-4 
-                                                            focus-visible:outline-offset-1 border bg-brand-button 
-                                                            hover:bg-brand-button/80 
-                                                            text-white border-brand 
-                                                            focus-visible:outline-brand-600 
-                                                            shadow-sm w-full flex items-center 
-                                                            justify-center text-sm 
-                                                            leading-4 px-3 py-2
-                                                            ${
-                                                                isRejectHourSub(
-                                                                    sub.name
-                                                                )
-                                                                    ? 'bg-red-500'
-                                                                    : 'bg-[#328cff]'
-                                                            }  `}
-                                                >
-                                                    <span className="truncate font-medium text-xl">
-                                                        {isRejectHourSub(
-                                                            sub.name
-                                                        )
-                                                            ? 'Đang đóng!'
-                                                            : 'Mua Ngay'}
-                                                    </span>
-                                                </button>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    )}
+                    <div className=" md:!justify-evenly px-0 paymentContent win11Scroll">
+                        {listSubs.map((sub, index) => (
+                            <SubscriptionCard
+                                key={index}
+                                subInfo={sub}
+                            ></SubscriptionCard>
+                        ))}
+                    </div>
                 </LazyComponent>
             </div>
         </div>
     );
 };
 
-const Payment = ({ onClose, price, subInfo, iframe = '' }) => {
-    const t = useAppSelector((state) => state.globals.translation);
-    const { id } = useAppSelector((state) => state.user);
-    const { email } = useAppSelector((state) => state.user);
+const SubscriptionCard = ({ subInfo: sub }) => {
+    const domains = useAppSelector((state) => state.user.subscription.domains);
+    const not_logged_in = useAppSelector((state) => state.user.id == 'unknown');
+    const max =
+        domains?.findIndex(
+            (y) => y.free == Math.max(...domains.map((x) => x.free))
+        ) ?? 0;
 
-    const [pageNo, setPageNo] = useState(0);
-    const nextPage = () => {
-        setPageNo((old) => {
-            const current = pages.at(old);
-            return pages.length - 1 != old ? old + 1 : old;
-        });
-    };
-    const prevPage = () => {
-        if (pageNo == 0) {
-            onClose();
-            return;
-        }
-        setPageNo((old) => {
-            const n = old != 0 ? old - 1 : old;
-            const current = pages.at(n);
-            return n;
-        });
-    };
+    const [domain, setDomain] = useState(domains?.[max].domain ?? 'unknown');
+    const onChooseSub = () =>
+        not_logged_in
+            ? login('google', false)
+            : domains != undefined
+              ? appDispatch(
+                    get_payment({
+                        template: gameChoose.template,
+                        plan: sub.name,
+                        domain
+                    })
+                )
+              : appDispatch(get_payment());
 
-    const finishSurvey = async () => {
-        UserEvents({ type: `finish_payment` });
-        onClose();
-    };
-
-    const [qrurl, setQR] = useState(null);
-    useEffect(() => {
-        const url = new URL(
-            `https://img.vietqr.io/image/${mb}-${account_id}-${model}.png`
-        );
-        let amount = price * 1000;
-        url.searchParams.append('accountName', account_owner);
-        url.searchParams.append(
-            'addInfo',
-            `
-                PAY ${email.replace('@gmail.com', '')}
-            `
-        );
-
-        if (subInfo.name == 'hour_02') {
-            amount = price * subInfo.hoursChoose * 1000;
-        }
-        url.searchParams.append('amount', amount);
-
-        setQR(url.toString());
-
-        const handle = (e) =>
-            e.key == 'Enter'
-                ? nextPage()
-                : e.key == 'ArrowLeft'
-                  ? prevPage()
-                  : e.key == 'ArrowRight'
-                    ? nextPage()
-                    : null;
-        window.addEventListener('keydown', handle);
-        return () => {
-            window.removeEventListener('keydown', handle);
-        };
-    }, []);
-
-    const Finish = () => (
-        <>
-            <div className="yes_button base" onClick={finishSurvey}>
-                Continue
-            </div>
-        </>
+    const [isShowDetail, setShowDetail] = useState(
+        sub.name == 'month1' ? true : false
     );
-
-    const Navigate = () => (
-        <>
-            <div className="no_button base" onClick={prevPage}>
-                Back
-            </div>
-            <div className="yes_button base" onClick={nextPage}>
-                Next
-            </div>
-        </>
+    const gameChooseSubscription = useAppSelector(
+        (state) => state.globals.gameChooseSubscription
     );
-
-    const QR = () => (
-        <div className="left">
-            {/*<Image absolute src="qr_code.png" />*/}
-            <Image ext absolute src={qrurl} />
-        </div>
-    );
-    const Logo = () => (
-        <div className="left">
-            <div className="logoPayment" id="left_img" />
-        </div>
-    );
-
-    const pages = [
-        {
-            survey: false,
-            content: (
-                <>
-                    <QR />
-                    <div className="right">
-                        <div className="header mb-10">
-                            {t[Contents.PAYMENT_FOLLOW_UP_TITLE1]}
-                        </div>
-                        <div className="flex flex-col gap-2">
-                            <div>
-                                Tên Ngân Hàng: <b>MB Bank</b>
-                            </div>
-                            <div>
-                                Tên Chủ Tk: <b>DO VAN DAT</b>
-                            </div>
-
-                            <div>
-                                Số TK: <b>1502200344444</b>
-                            </div>
-                            <div>
-                                Số tiền:{' '}
-                                <b>
-                                    {subInfo.name == 'hour_02'
-                                        ? price * subInfo.hoursChoose * 1000
-                                        : price * 1000}{' '}
-                                    VNĐ
-                                </b>
-                            </div>
-                            <div>
-                                Nội dung:{' '}
-                                <b>PAY {email.replace('@gmail.com', '')}</b>{' '}
-                            </div>
-                        </div>
-
-                        <p className="mt-4">
-                            <b className="text-lg">LƯU Ý</b>: Vui lòng liên hệ
-                            fanpage nếu quá 15' chưa được kích hoạt.
-                        </p>
-                    </div>
-                    <Navigate />
-                </>
-            )
-        }
-    ];
-
-    //pages.unshift({
-    //    survey: false,
-    //    content: (
-    //        <>
-    //            <Logo />
-    //            <div className="right">
-    //                <div className="header mb-8">
-    //                    {t[Contents.PAYMENT_FOLLOW_UP_TITLE]}
-    //                </div>
-    //                <div>
-    //                    {t[Contents.PAYMENT_FOLLOW_UP_CONTENT]}
-    //                    <br />
-    //                </div>
-    //            </div>
-    //            <Navigate />
-    //        </>
-    //    )
-    //});
-
-    pages.push({
-        survey: false,
-        content: (
-            <>
-                <Logo />
-                <div className="right">
-                    <div className="header mb-8">
-                        {t[Contents.PAYMENT_FOLLOW_UP_DONE]}
-                    </div>
-                    <Finish />
-                </div>
-            </>
+    const gameChoose = useAppSelector((state) =>
+        state.globals.gamesInSubscription.find(
+            (item) => item.template == gameChooseSubscription?.template
         )
-    });
+    );
+    const openChooseGames = (subName) =>
+        appDispatch(
+            popup_open({
+                type: 'gameChoose',
+                data: {
+                    planName: subName
+                }
+            })
+        );
+
+    const clickDetail = () => {
+        setShowDetail((old) => !old);
+        UserEvents({
+            type: 'payment/detail',
+            payload: isShowDetail
+        });
+    };
 
     return (
-        <div className="getstarted floatTab dpShad">
-            <div className="windowScreen flex flex-col" data-dock="true">
-                <div className="restWindow flex-grow flex flex-col p-[24px]">
-                    <div className="w-full h-full">
-                        {/*<div className="inner_fill_setup">*/}
-                        {/*{pages.at(pageNo)?.content}*/}
-                        <iframe
-                            title="QR webstie"
-                            className="w-full h-full"
-                            src={iframe}
-                        ></iframe>
+        <div className="sub relative">
+            {sub.highlight ? (
+                <div className="absolute rounded-[36px] bg-amber-600 absolute inset-0 z-[-1] w-[102%]  top-[-37px] bottom-[-6px] left-[-1%]">
+                    <p className="text-[16px] leading-4 text-center py-2 mt-[4px] text-background">
+                        Gói phổ biến nhất
+                    </p>
+                </div>
+            ) : null}
+
+            <div className="flex flex-col flex-1 overflow-hidden border h-full rounded-[4px]">
+                <div className="bg-surface-100 px-4 xl:px-4 2xl:px-8 pt-6 rounded-tr-[4px] rounded-tl-[4px] ">
+                    <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2">
+                            <p className=" uppercase flex items-center gap-4 font-mono">
+                                {sub.title}
+                            </p>
+                        </div>
+                    </div>
+
+                    <hr className="border-[#504646]" />
+                    <div className=" text-foreground flex items-center text-lg min-h-[116px]">
+                        <div className="flex flex-col gap-1">
+                            <div className="flex items-end gap-2">
+                                <div>
+                                    <div className="flex items-end">
+                                        {
+                                            <>
+                                                <h3 className="mt-2 gradient-text-500 text-3xl pb-1 uppercase font-mono text-brand-600">
+                                                    {sub.price_in_vnd
+                                                        ? `${sub.price_in_vnd}k VND`
+                                                        : `\$${sub.price}`}
+                                                </h3>
+                                                <p className="text-foreground-lighter mb-1.5 ml-1 text-[13px] leading-4">
+                                                    / {sub.period}{' '}
+                                                </p>
+                                            </>
+                                        }
+                                    </div>
+                                    <p className="-mt-2">
+                                        <span className="bg-background text-brand-600 border shadow-sm rounded-md bg-opacity-30 py-0.5 px-2 text-[13px] leading-4">
+                                            {sub.under_price}
+                                        </span>
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <hr className="border-[#504646]" />
+                </div>
+                <div className="border-default bg-surface-100 flex h-full rounded-bl-[4px] rounded-br-[4px] flex-1 flex-col px-4 2xl:px-8 py-6 ">
+                    <div
+                        onClick={clickDetail}
+                        className="flex items-center text-foreground-light text-[13px] mt-2 mb-2"
+                    >
+                        {isShowDetail ? (
+                            <MdArrowDropDown style={{ fontSize: '1.6rem' }} />
+                        ) : (
+                            <MdArrowRight style={{ fontSize: '1.6rem' }} />
+                        )}
+                        Chi tiết:
+                    </div>
+
+                    {isShowDetail &&
+                        sub.bonus.map((x, i) => (
+                            <ul
+                                key={i}
+                                role="list"
+                                className="text-[13px] px-4 text-foreground-lighter"
+                            >
+                                <li className="flex items-center py-[8px] first:mt-0">
+                                    <svg
+                                        xmlns="http://www.w3.org/2000/svg"
+                                        width="18"
+                                        height="18"
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        strokeWidth="3"
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        className="sbui-icon text-brand h-4 w-4"
+                                        aria-hidden="true"
+                                    >
+                                        <polyline points="20 6 9 17 4 12"></polyline>
+                                    </svg>
+                                    <span className="text-foreground mb-0 ml-3 text-[0.8rem] ">
+                                        {x}
+                                    </span>
+                                </li>
+                            </ul>
+                        ))}
+
+                    <div className="flex flex-col gap-2 mt-auto prose">
+                        <div className="space-y-2">
+                            <p className="text-[13px] whitespace-pre-wrap"></p>
+                        </div>
+                        {sub.name == 'month1' && domains != undefined ? (
+                            <div className="flex flex-col">
+                                <button
+                                    className="mt-4 w-full mx-auto border-[#000] border-[1px] border-solid shadow-sm btn btn-secondary"
+                                    onClick={() => openChooseGames(sub.name)}
+                                >
+                                    Game có sẵn trên máy
+                                </button>
+                                <span className="mt-2 w-full mx-auto shadow-sm">
+                                    Chọn server:
+                                </span>
+                            </div>
+                        ) : null}
+                        {sub.name == 'month1' ? (
+                            <div className="flex flex-col gap-2 mb-4">
+                                {domains?.map(({ domain, free }, index) =>
+                                    free > 0 ? (
+                                        <label
+                                            key={index}
+                                            className="text-blue-500 flex gap-2 items-center"
+                                            htmlFor="server1"
+                                        >
+                                            <input
+                                                defaultChecked={index == max}
+                                                onChange={(e) =>
+                                                    e.target.checked
+                                                        ? setDomain(domain)
+                                                        : null
+                                                }
+                                                data={domain}
+                                                type="radio"
+                                                name="server"
+                                                id="server1"
+                                            />
+                                            <span
+                                                name="play"
+                                                className="text-blue-500"
+                                            >
+                                                {domain}
+                                            </span>
+                                            <div className="flex gap-2 items-center text-xs">
+                                                {free} chỗ trống
+                                                {index == max ? (
+                                                    <GreenLight />
+                                                ) : null}
+                                            </div>
+                                        </label>
+                                    ) : null
+                                )}
+                            </div>
+                        ) : null}
+                        {gameChoose?.template &&
+                        sub.name == gameChooseSubscription.planName ? (
+                            <div
+                                key={gameChoose.name}
+                                className="flex flex-col py-4 w-[80px] mx-auto my-5 h-[100px] rounded-lg bg-[#2d3146]"
+                            >
+                                <Image
+                                    w={40}
+                                    h={40}
+                                    ext
+                                    absolute
+                                    src={gameChoose.logo}
+                                />
+                                <div className="name mt-auto capitalize text-white  text-xs text-center font-semibold">
+                                    {gameChoose.name}
+                                </div>
+                            </div>
+                        ) : null}
+                        <button
+                            onClick={onChooseSub}
+                            type="button"
+                            className={`border-none h-[48px] relative cursor-pointer 
+                                                            space-x-2 text-center font-regular ease-out duration-200 rounded-[8px] 
+                                                            outline-none transition-all outline-0 focus-visible:outline-4 
+                                                            focus-visible:outline-offset-1 border bg-brand-button 
+                                                            hover:bg-brand-button/80 
+                                                            text-white border-brand 
+                                                            focus-visible:outline-brand-600 
+                                                            shadow-sm w-full flex items-center 
+                                                            justify-center text-[1.125rem] 
+                                                            leading-4 px-3 py-2
+                                                            ${
+                                                                sub.name !=
+                                                                'month1'
+                                                                    ? 'bg-red-500'
+                                                                    : 'bg-[#0067c0]'
+                                                            }  `}
+                        >
+                            {sub.name != 'month1'
+                                ? 'Đang đóng!'
+                                : domains == undefined
+                                  ? not_logged_in
+                                      ? 'Mua ngay'
+                                      : 'Gia hạn'
+                                  : 'Mua Ngay'}
+                        </button>
                     </div>
                 </div>
+            </div>
+        </div>
+    );
+};
+
+const GreenLight = () => {
+    return (
+        <div className="relative h-4 w-4">
+            {/* Outer glow effect */}
+            <div className="absolute -inset-1 rounded-full bg-green-500/30 blur-sm animate-pulse"></div>
+            {/* Inner bright dot */}
+            <div className="relative h-4 w-4 rounded-full bg-green-500 shadow-lg shadow-green-500/50">
+                {/* Highlight effect */}
+                {/*<div className="absolute top-0.5 left-0.5 h-1.5 w-1.5 rounded-full bg-green-200/60"></div>*/}
             </div>
         </div>
     );

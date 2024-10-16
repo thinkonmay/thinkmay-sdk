@@ -19,7 +19,9 @@ const Popup = () => {
     );
 
     const closeModal = () => {
-        popup.type == 'complete' || popup.type == 'maintain'
+        popup.type == 'complete' ||
+        popup.type == 'maintain' ||
+        popup.type == 'gameChoose'
             ? appDispatch(popup_close())
             : null;
     };
@@ -42,8 +44,8 @@ const Popup = () => {
                         {Object.keys(modals)
                             .filter((x) => x == popup.type)
                             .map((key, idx) => {
-                                const WinApp = modals[key];
-                                return <WinApp key={idx} data={popup.data} />;
+                                const Modal = modals[key];
+                                return <Modal key={idx} data={popup.data} />;
                             })}
                     </div>
                 </ReactModal>

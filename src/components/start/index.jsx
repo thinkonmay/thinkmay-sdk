@@ -1,20 +1,24 @@
-import { useEffect, useRef, useState } from 'react';
-import { AiOutlineCloudDownload } from 'react-icons/ai';
+import { useEffect, useState } from 'react';
 import * as fa from 'react-icons/fa';
 import * as fi from 'react-icons/fi';
 import * as md from 'react-icons/md';
 import { MdArrowBack, MdOutlineClose } from 'react-icons/md';
-import { PiPauseBold } from 'react-icons/pi';
+import { RenderNode } from '../../../src-tauri/api';
 import * as Actions from '../../backend/actions';
 import { getTreeValue } from '../../backend/actions';
 
-import { useDispatch } from 'react-redux';
+import { isMobile } from '../../../src-tauri/core';
+import {
+    MAX_BITRATE,
+    MAX_FRAMERATE,
+    MIN_BITRATE,
+    MIN_FRAMERATE
+} from '../../../src-tauri/singleton';
 import {
     appDispatch,
     change_bitrate,
     change_btnGp_size,
     change_framerate,
-    menu_show,
     sidepane_panehide,
     toggle_default_gamepad_position,
     toggle_gamepad,
@@ -22,20 +26,10 @@ import {
     toggle_gamepad_setting,
     useAppSelector
 } from '../../backend/reducers';
-import { Contents } from '../../backend/reducers/locales';
-import {
-    MAX_BITRATE,
-    MAX_FRAMERATE,
-    MIN_BITRATE,
-    MIN_FRAMERATE
-} from '../../backend/reducers/remote';
 import {
     clickDispatch,
     customClickDispatch
 } from '../../backend/utils/dispatch';
-import { sleep } from '../../backend/utils/sleep';
-import { VirtualGamepad } from '../mobileControl/component/virtGamepad';
-import VirtKeyboard from '../mobileControl/component/virtKeyBoard';
 import { Icon } from '../shared/general';
 import './searchpane.scss';
 import './sidepane.scss';
@@ -43,77 +37,50 @@ import './startmenu.scss';
 export * from './start';
 
 export const DesktopApp = () => {
+    const desk = useAppSelector((state) => state.desktop);
     const deskApps = useAppSelector((state) =>
         state.apps.apps.filter((x) => state.desktop.apps.includes(x.id))
     );
-    const desk = useAppSelector((state) => state.desktop);
-    const [holding, setHolding] = useState(false);
-    const timeoutRef = useRef(null);
-    const lastTap = useRef(null);
 
-    const dispatch = useDispatch();
-
-    const handleTouchStart = (e) => {
-        return;
-        Actions.afterMath(e);
-        timeoutRef.current = setTimeout(() => {
-            setHolding(true);
-            e.preventDefault();
-            var touch = e.touches[0] || e.changedTouches[0];
-
-            var data = {
-                top: touch.clientY,
-                left: touch.clientX
-            };
-            data.menu = e.target.dataset.menu;
-            data.dataset = { ...e.target.dataset };
-            dispatch(menu_show(data));
-        }, 300); // 1000 milliseconds = 1 second
-    };
-
-    const handleTouchEnd = async (e) => {
-        //clearTimeout(timeoutRef.current);
-        await sleep(200);
-        clickDispatch(e);
-    };
+    const handleTouchEnd = (e) => setTimeout(clickDispatch(e), 200);
     const handleDouble = customClickDispatch((e) => e.stopPropagation());
 
     return (
         <div className="desktopCont">
             {!desk.hide &&
-                deskApps.map((app, i) => {
-                    return (
-                        <div
-                            key={i}
-                            className="dskApp prtclk relative"
-                            tabIndex={0}
-                            data-action={app.action}
-                            data-menu={app.menu}
-                            data-payload={app.payload || 'full'}
-                            data-id={app.id ?? 'null'}
-                            data-name={app.name}
-                            onDoubleClick={handleDouble}
-                            onTouchStart={handleTouchStart}
-                            onTouchEnd={handleTouchEnd}
-                        >
+                deskApps.map((app, i) => (
+                    <div
+                        key={i}
+                        className="dskApp prtclk relative"
+                        tabIndex={0}
+                        data-action={app.action}
+                        data-menu={app.menu}
+                        data-payload={app.payload || 'full'}
+                        data-id={app.id ?? 'null'}
+                        data-name={app.name}
+                        onDoubleClick={handleDouble}
+                        onTouchEnd={handleTouchEnd}
+                    >
+                        {app.icon == undefined ? (
                             <Icon
-                                className="dskIcon "
+                                className={`dskIcon ${app.id}`}
                                 click={'null'}
-                                src={app.id}
-                                // mono={!(app.ready ?? true)}
+                                width={Math.round(desk.size * 36)}
+                                src={app.image ?? app.id}
+                                mono={app.mono ?? false}
                                 pr
+                            />
+                        ) : (
+                            <Icon
+                                icon={app.icon}
+                                className={`dskIcon ${app.id}`}
+                                click={'null'}
                                 width={Math.round(desk.size * 36)}
                             />
-                            <div className="appName">{app.name}</div>
-                            {!app.installing ? null : (
-                                <AiOutlineCloudDownload className="text-[1.2rem] text-white absolute top-[-3px] right-[-3px]" />
-                            )}
-                            {app.ready ?? true ? null : (
-                                <PiPauseBold className="text-[1.2rem] text-white absolute top-[-3px] right-[-3px]" />
-                            )}
-                        </div>
-                    );
-                })}
+                        )}
+                        <div className="appName">{app.name}</div>
+                    </div>
+                ))}
         </div>
     );
 };
@@ -125,19 +92,6 @@ export const SidePane = () => {
     const t = useAppSelector((state) => state.globals.translation);
     const [pnstates, setPnstate] = useState([]);
     const dispatch = appDispatch;
-    const [isMobile, setIsMobile] = useState(window.innerWidth < 1024);
-
-    useEffect(() => {
-        const handleResize = () => {
-            setIsMobile(window.innerWidth < 1024);
-        };
-
-        // Attach event listener
-        window.addEventListener('resize', handleResize);
-
-        // Detach event listener on cleanup
-        return () => window.removeEventListener('resize', handleResize);
-    }, []);
     useEffect(() => {
         const framerateSlider = document.querySelector('.framerateSlider');
         const bitrateSlider = document.querySelector('.bitrateSlider');
@@ -161,19 +115,10 @@ export const SidePane = () => {
     }
 
     useEffect(() => {
-        //sidepane.quicks.map((item, i) => {
-        //    if (item.src == 'nightlight') {
-        //        if (pnstates[i]) document.body.dataset.sepia = true;
-        //        else document.body.dataset.sepia = false;
-        //    }
-        //});
-    });
-
-    useEffect(() => {
         var tmp = [];
-        var states = isMobile
+        var states = isMobile()
             ? sidepane.mobileControl.buttons
-            : sidepane.quicks;
+            : sidepane.desktopControl.buttons;
         const mobileState = {
             gamePadOpen: !sidepane.mobileControl.gamePadHide,
             keyboardOpen: !sidepane.mobileControl.keyboardHide
@@ -199,10 +144,8 @@ export const SidePane = () => {
             >
                 <div className="mainContent">
                     <div className="quickSettings ">
-                        {isMobile ? (
-                            <MobileComponent
-                                pnstates={pnstates}
-                            ></MobileComponent>
+                        {isMobile() ? (
+                            <MobileComponent pnstates={pnstates} />
                         ) : (
                             <DesktopComponent pnstates={pnstates} />
                         )}
@@ -275,19 +218,7 @@ export const SidePane = () => {
                     </div>
                     <GamePadSetting></GamePadSetting>
                 </div>
-
-                {/*<div className="p-1 bottomBar">
-                    <div className="px-3 battery-sidepane">
-                        <Battery pct />
-                    </div>
-                </div>*/}
             </div>
-            {isMobile ? (
-                <>
-                    <VirtKeyboard></VirtKeyboard>
-                    <VirtualGamepad></VirtualGamepad>
-                </>
-            ) : null}
         </>
     );
 };
@@ -319,9 +250,9 @@ const GamePadSetting = () => {
                     : 'gamepadSetting slide-in'
             }
         >
-            <div className="flex justify-between py-3 mx-[-12px]">
+            <div className="flex justify-between py-4 px-2 mb-[16px] mx-[-12px]">
                 <MdArrowBack
-                    fontSize={'1.2rem'}
+                    fontSize={'1.5rem'}
                     onClick={() => {
                         appDispatch(toggle_gamepad_setting());
                     }}
@@ -329,13 +260,11 @@ const GamePadSetting = () => {
 
                 <MdOutlineClose
                     onClick={handleClose}
-                    fontSize={'1.2rem'}
+                    fontSize={'1.5rem'}
                 ></MdOutlineClose>
             </div>
             <button
-                onClick={() => {
-                    appDispatch(toggle_gamepad());
-                }}
+                onClick={() => appDispatch(toggle_gamepad())}
                 className="w-full instbtn outline-none border-none py-3 px-6 text-[14px] rounded-lg mb-4"
             >
                 Đóng/mở gamepad ảo
@@ -382,7 +311,7 @@ const GamePadSetting = () => {
                 Đổi vị trí các nút
             </button>
 
-            {gamepadDraggable == 'draggable' ? (
+            {gamepadDraggable ? (
                 <>
                     <p className="text-[0.75rem] mt-1">
                         *kéo các nút để chỉnh vị trí
@@ -412,31 +341,30 @@ const GamePadSetting = () => {
     );
 };
 
-export const LogMaintain = () => {
-    return (
-        <div class="bg-red-600 absolute flex gap-4 items-center right-[50%] translate-x-[50%] top-0 text-white font-bold py-2 px-4 rounded">
-            <md.MdOutlineSettingsSuggest
-                fontSize={'1.5rem'}
-            ></md.MdOutlineSettingsSuggest>
-            Server is offline
-        </div>
-    );
-};
-
 function MobileComponent({ pnstates }) {
     const sidepane = useAppSelector((state) => state.sidepane);
     const t = useAppSelector((state) => state.globals.translation);
+    const shutdownable = useAppSelector(
+        (state) => new RenderNode(state.worker.data).data[0]?.info?.available
+    );
+
+    const renderList =
+        shutdownable == 'started'
+            ? sidepane.mobileControl.buttons
+            : sidepane.mobileControl.buttons.filter(
+                  (x) => x.action != 'shutDownVm'
+              );
 
     return (
         <>
             <div className="listBtn">
-                {sidepane.mobileControl.buttons.map((qk, idx) => (
+                {renderList.map((qk, idx) => (
                     <div key={idx} className="qkGrp">
                         <div
                             style={{
                                 ...qk.style
                             }}
-                            className="qkbtn handcr prtclk"
+                            className={`qkbtn handcr prtclk ${qk.id}`}
                             onClick={clickDispatch}
                             data-action={qk.action}
                             data-payload={qk.payload || qk.state}
@@ -496,17 +424,27 @@ function MobileComponent({ pnstates }) {
 function DesktopComponent({ pnstates }) {
     const t = useAppSelector((state) => state.globals.translation);
     const sidepane = useAppSelector((state) => state.sidepane);
+    const shutdownable = useAppSelector(
+        (state) => new RenderNode(state.worker.data).data[0]?.info?.available
+    );
+
+    const renderList =
+        shutdownable == 'started'
+            ? sidepane.desktopControl.buttons
+            : sidepane.desktopControl.buttons.filter(
+                  (x) => x.action != 'shutDownVm'
+              );
 
     return (
         <>
             <div className="listBtn">
-                {sidepane.quicks.map((qk, idx) => (
+                {renderList.map((qk, idx) => (
                     <div key={idx} className="qkGrp">
                         <div
                             style={{
                                 ...qk.style
                             }}
-                            className="qkbtn handcr prtclk"
+                            className={`qkbtn handcr prtclk ${qk.id}`}
                             onClick={clickDispatch}
                             data-action={qk.action}
                             data-payload={qk.payload || qk.state}
@@ -544,7 +482,7 @@ function DesktopComponent({ pnstates }) {
             <div className="shortcuts">
                 <hr className="mb-4" />
                 <div className="listBtn">
-                    {sidepane.shortcuts.map((qk, idx) => (
+                    {sidepane.desktopControl.shortcuts.map((qk, idx) => (
                         <div key={idx} className="qkGrp t">
                             <div
                                 style={{
