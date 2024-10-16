@@ -9,6 +9,7 @@ import {
     set_fullscreen,
     useAppSelector
 } from './backend/reducers';
+import { PreloadBackground } from './backend/actions/background';
 import { SidePane } from './components/start';
 import Taskbar from './components/taskbar';
 import { Background } from './containers/background';
@@ -105,7 +106,7 @@ function App() {
         return () => {
             clearInterval(UIStateLoop);
         };
-    }, [remote.fullscreen, tutorial]);
+    }, [remote.fullscreen]);
 
     const exitpointerlock = () => document.exitPointerLock();
 

@@ -74,12 +74,8 @@ export const workerAsync = {
     wait_and_claim_volume: createAsyncThunk(
         'wait_and_claim_volume',
         async (_: void, { getState }) => {
-            const { email, subscription } = (getState() as RootState).user;
-            const { status } = subscription;
-            const { vcpu, ram } =
-                status == 'PAID' || status == 'IMPORTED'
-                    ? subscription.local_metadata
-                    : { vcpu: '16', ram: '16' };
+            const { email, volume_id } = (getState() as RootState).user;
+            const { vcpu, ram } = { vcpu: '16', ram: '16' };
 
             await appDispatch(worker_refresh());
             appDispatch(
@@ -89,7 +85,6 @@ export const workerAsync = {
                 })
             );
 
-            const volume_id = (getState() as RootState).user.volume_id;
             const now = () => new Date().getTime() / 1000 / 60;
             const start = now();
             while (now() - start < 180) {
