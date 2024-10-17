@@ -1,7 +1,5 @@
-import { PayloadAction, createAsyncThunk, createSlice } from '@reduxjs/toolkit';
-import { appDispatch, render_message, store } from '.';
-import { LOCAL } from '../../../src-tauri/api';
-import { BuilderHelper, CacheRequest } from './helper';
+import { PayloadAction, createSlice } from '@reduxjs/toolkit';
+import { BuilderHelper } from './helper';
 import { Contents } from './locales';
 
 export type Notification = {
@@ -251,70 +249,7 @@ const initialState: Data = {
     banhide: true
 };
 
-export const sidepaneAsync = {
-    push_message: createAsyncThunk(
-        'push_message',
-        async (input: Message, { getState }): Promise<void> => {
-            const email = store.getState().user.email;
-            await LOCAL()
-                .from('user_message')
-                .insert({
-                    metadata: {
-                        email,
-                        type: input.type,
-                        recipient: input.recipient
-                    },
-                    value: { content: input.content }
-                });
-        }
-    ),
-    handle_message: async (payload: any) => {
-        if (payload.new.metadata.email != store.getState().user.email) return;
-        appDispatch(
-            render_message({
-                ...payload.new.value,
-                ...payload.new.metadata,
-                timestamp: payload.new.timestamp
-            })
-        );
-    },
-    fetch_message: createAsyncThunk(
-        'fetch_message',
-        async (email: string, { getState }): Promise<Message[]> => {
-            LOCAL()
-                .channel('schema-message-changes')
-                .on(
-                    'postgres_changes',
-                    {
-                        event: 'INSERT',
-                        schema: 'public',
-                        table: 'user_message'
-                    },
-                    sidepaneAsync.handle_message
-                )
-                .subscribe();
-
-            return await CacheRequest('message', 30, async () => {
-                const { data, error } = await LOCAL()
-                    .from('user_message')
-                    .select('timestamp,value,metadata')
-                    .order('timestamp', { ascending: false })
-                    .eq(`metadata->>email`, email)
-                    .limit(10);
-
-                if (error) throw error;
-
-                return data.map((x) => {
-                    return {
-                        ...x.value,
-                        ...x.metadata,
-                        timestamp: x.timestamp
-                    };
-                });
-            });
-        }
-    )
-};
+export const sidepaneAsync = {};
 
 export const sidepaneSlice = createSlice({
     name: 'sidepane',
@@ -373,13 +308,5 @@ export const sidepaneSlice = createSlice({
             state.hide = true;
             state.banhide = true;
         }
-    },
-    extraReducers: (builder) => {
-        BuilderHelper(builder, {
-            fetch: sidepaneAsync.fetch_message,
-            hander: (state, action: PayloadAction<Message[]>) => {
-                state.message = [...state.message, ...action.payload];
-            }
-        });
     }
 });

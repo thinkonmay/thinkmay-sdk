@@ -1,4 +1,4 @@
-import { UserEvents, UserSession } from '../../../src-tauri/api';
+import { UserEvents } from '../../../src-tauri/api';
 import { CLIENT } from '../../../src-tauri/singleton';
 import {
     RootState,
@@ -76,18 +76,9 @@ const handleClipboard = async () => {
     }
 };
 
-const startAnalytics = async () => {
-    await UserSession(store.getState().user.email);
-};
-
 export const preload = async () => {
     await fetchUser();
-    await Promise.allSettled([
-        startAnalytics(),
-        loadSettings(),
-        fetchApp(),
-        fetchSetting()
-    ]);
+    await Promise.allSettled([loadSettings(), fetchApp(), fetchSetting()]);
 };
 
 export const PreloadBackground = async () => {

@@ -5,7 +5,7 @@ import { globalSlice } from './globals';
 import { modalSlice as popupSlice } from './modal';
 import { remoteAsync, remoteSlice } from './remote.js';
 import { settSlice } from './settings.js';
-import { sidepaneAsync, sidepaneSlice } from './sidepane';
+import { sidepaneSlice } from './sidepane';
 import { userAsync, userSlice } from './user';
 import { wallSlice } from './wallpaper';
 import { workerAsync, workerSlice } from './worker';
@@ -118,8 +118,6 @@ export const {
     toggle_remote_async,
     hard_reset_async
 } = remoteAsync;
-
-export const { push_message, fetch_message } = sidepaneAsync;
 
 export const dispatch_generic = async ({
     type,
