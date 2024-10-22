@@ -613,8 +613,8 @@ export const workerSlice = createSlice({
                 hander: (state, action) => {}
             },
             {
-               fetch: workerAsync.wait_and_claim_volume,
-               hander: (state, action) => { }
+                fetch: workerAsync.wait_and_claim_volume,
+                hander: (state, action) => {}
             }
         );
     }
