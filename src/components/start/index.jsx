@@ -41,7 +41,7 @@ export const SidePane = () => {
     const setting = useAppSelector((state) => state.setting);
     const remote = useAppSelector((state) => state.remote);
     const t = useAppSelector((state) => state.globals.translation);
-    const [pnstates, setPnstate] = useState([]);
+    const [pnstates, setPnstate] = useState({});
     const dispatch = appDispatch;
     useEffect(() => {
         const framerateSlider = document.querySelector('.framerateSlider');
@@ -66,21 +66,22 @@ export const SidePane = () => {
     }
 
     useEffect(() => {
-        var tmp = [];
-        var states = isMobile()
+        let states = isMobile()
             ? sidepane.mobileControl.buttons
             : sidepane.desktopControl.buttons;
         const mobileState = {
             gamePadOpen: !sidepane.mobileControl.gamePadHide,
             keyboardOpen: !sidepane.mobileControl.keyboardHide
         };
-        for (var i = 0; i < states.length; i++) {
-            var val = getTreeValue(
+
+        const tmp = {};
+        for (const { state, name } of states) {
+            let val = getTreeValue(
                 { ...setting, ...remote, ...mobileState },
-                states[i].state
+                state
             );
-            if (states[i].name == 'Theme') val = val == 'dark';
-            tmp.push(val);
+            if (name == 'Theme') val = val == 'dark';
+            tmp[state] = val;
         }
 
         setPnstate(tmp);
@@ -104,12 +105,36 @@ export const SidePane = () => {
                         <div className="sliderCont flex flex-col items-start">
                             <div className="containerSlider">
                                 <p className="sliderName">
-                                    Packetloss:{' '}
+                                    packetloss:{' '}
                                     <span> {remote.packetLoss}</span>
-                                    IDR: <span> {remote.idrcount}</span>
-                                    decodeFPS: <span> {remote.realfps}</span>
+                                    idr: <span> {remote.idrcount}</span>
                                     bitrate: <span> {remote.realbitrate}</span>
                                     kbps
+                                </p>
+                                <p className="sliderName">
+                                    fps: <span> {remote.realfps}</span>
+                                    {!isNaN(remote.realdecodetime) ? (
+                                        <>
+                                            decode:{' '}
+                                            <span>
+                                                {' '}
+                                                {remote.realdecodetime.toFixed(
+                                                    2
+                                                )}
+                                            </span>
+                                            ms{' '}
+                                        </>
+                                    ) : null}
+                                    {!isNaN(remote.realdelay) ? (
+                                        <>
+                                            delay:{' '}
+                                            <span>
+                                                {' '}
+                                                {remote.realdelay.toFixed(2)}
+                                            </span>
+                                            ms
+                                        </>
+                                    ) : null}
                                 </p>
 
                                 <div className="sliderName">
@@ -125,7 +150,9 @@ export const SidePane = () => {
                                     </span>
                                 </div>
                                 <div className=" sliderWrapper">
-                                    <span>1mbs</span>
+                                    <span>
+                                        {Math.round(MIN_BITRATE() / 1000)}mbps
+                                    </span>
                                     <input
                                         className="sliders bitrateSlider"
                                         onChange={setBitrate}
@@ -134,13 +161,14 @@ export const SidePane = () => {
                                         max="100"
                                         value={remote.bitrate}
                                     />
-                                    <span>15mbs</span>
+                                    <span>
+                                        {Math.round(MAX_BITRATE() / 1000)}mbps
+                                    </span>
                                 </div>
                             </div>
 
                             <div className="containerSlider">
                                 <div className="sliderName">
-                                    {/*{t[Contents.FRAMERATE]}*/}
                                     Fps:
                                     <span>
                                         {Math.round(
@@ -318,7 +346,7 @@ function MobileComponent({ pnstates }) {
                             onClick={clickDispatch}
                             data-action={qk.action}
                             data-payload={qk.payload || qk.state}
-                            data-state={pnstates[idx]}
+                            data-state={pnstates[qk.state]}
                         >
                             {Object.keys(md).includes(qk.src) ? (
                                 (() => {
@@ -341,32 +369,27 @@ function MobileComponent({ pnstates }) {
                                     ui={qk.ui}
                                     src={qk.src}
                                     width={14}
-                                    invert={pnstates[idx] ? true : null}
+                                    invert={pnstates[qk.state] ? true : null}
                                 />
                             )}
                         </div>
                         <div className="qktext">{t[qk.name]}</div>
                     </div>
                 ))}
-            </div>
-            <div className="shortcuts">
-                <hr className="mb-4" />
-                <div className="listBtn">
-                    {sidepane.mobileControl.shortcuts.map((qk, idx) => (
-                        <div key={idx} className="qkGrp t">
-                            <div
-                                style={{
-                                    fontSize: '0.6rem'
-                                }}
-                                className="qkbtn handcr prtclk"
-                                onClick={() => Actions.clickShortCut(qk.val)}
-                            >
-                                {qk.name}
-                            </div>
-                            {/*<div className="qktext">{t[qk.name]}</div>*/}
+                {sidepane.mobileControl.shortcuts.map((qk, idx) => (
+                    <div key={idx} className="qkGrp t">
+                        <div
+                            style={{
+                                fontSize: '0.6rem'
+                            }}
+                            className="qkbtn handcr prtclk"
+                            onClick={() => Actions.clickShortCut(qk.val)}
+                        >
+                            {qk.name}
                         </div>
-                    ))}
-                </div>
+                        {/*<div className="qktext">{t[qk.name]}</div>*/}
+                    </div>
+                ))}
             </div>
         </>
     );
@@ -398,7 +421,7 @@ function DesktopComponent({ pnstates }) {
                             onClick={clickDispatch}
                             data-action={qk.action}
                             data-payload={qk.payload || qk.state}
-                            data-state={pnstates[idx]}
+                            data-state={pnstates[qk.state]}
                         >
                             {Object.keys(md).includes(qk.src) ? (
                                 (() => {
@@ -421,33 +444,28 @@ function DesktopComponent({ pnstates }) {
                                     ui={qk.ui}
                                     src={qk.src}
                                     width={14}
-                                    invert={pnstates[idx] ? true : null}
+                                    invert={pnstates[qk.state] ? true : null}
                                 />
                             )}
                         </div>
                         <div className="qktext">{t[qk.name]}</div>
                     </div>
                 ))}
-            </div>
-            <div className="shortcuts">
-                <hr className="mb-4" />
-                <div className="listBtn">
-                    {sidepane.desktopControl.shortcuts.map((qk, idx) => (
-                        <div key={idx} className="qkGrp t">
-                            <div
-                                style={{
-                                    fontSize: '0.8rem'
-                                }}
-                                className="qkbtn handcr prtclk"
-                                onClick={() => Actions.clickShortCut(qk.val)}
-                            >
-                                {qk.name}
-                            </div>
-                            {/*<div className="qktext">{t[qk.name]}</div>*/}
+                {sidepane.desktopControl.shortcuts.map((qk, idx) => (
+                    <div key={idx} className="qkGrp t">
+                        <div
+                            style={{
+                                fontSize: '0.8rem'
+                            }}
+                            className="qkbtn handcr prtclk"
+                            onClick={() => Actions.clickShortCut(qk.val)}
+                        >
+                            {qk.name}
                         </div>
-                    ))}
-                </div>
+                    </div>
+                ))}
             </div>
+            <hr className="mb-4" />
         </>
     );
 }

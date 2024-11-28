@@ -1,18 +1,27 @@
-FROM node:21.7.3 as build
+# Build Stage
+FROM node:20-alpine as builder
+# as builder
 
-COPY package.json .
-COPY package-lock.json .
+# Install required packages
+RUN apk add --no-cache git openssh-client
 
-RUN npm i -f
+WORKDIR /app
 
+# Clone the repository recursively to include submodules
 COPY . .
 
+# Install dependencies and build the application
+RUN npm install -f
 RUN npm run build
 
-FROM nginx:latest
+# Production Stage
+FROM nginx:alpine
+
+# Copy built assets from build stage
+COPY --from=builder /app/dist /usr/share/nginx/html
+
+COPY nginx.conf /etc/nginx/conf.d/default.conf
 
 EXPOSE 80
 
-RUN rm -rf /usr/share/nginx/html && mkdir /usr/share/nginx/html
-COPY --from=build dist /usr/share/nginx/html
-
+CMD ["nginx", "-g", "daemon off;"]

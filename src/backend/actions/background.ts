@@ -10,12 +10,14 @@ import {
     have_focus,
     loose_focus,
     ping_session,
+    popup_open,
     setting_theme,
     sidepane_panethem,
     store,
     sync,
     worker_refresh
 } from '../reducers';
+import { formatError } from '../utils/error';
 
 const loadSettings = async () => {
     let thm = localStorage.getItem('theme');
@@ -89,10 +91,15 @@ export const PreloadBackground = async () => {
             type: 'preload/rejected',
             payload: e
         });
-    }
 
-    setInterval(check_worker, 30 * 1000);
-    setInterval(sync, 2 * 1000);
-    setInterval(handleClipboard, 1000);
-    setInterval(ping_session, 1000 * 30);
+        appDispatch(
+            popup_open({
+                type: 'complete',
+                data: {
+                    content: formatError(e),
+                    success: false
+                }
+            })
+        );
+    }
 };

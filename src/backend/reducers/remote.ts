@@ -6,12 +6,20 @@ import {
     popup_open,
     remote_connect,
     remote_ready,
+    RootState,
     store,
-    toggle_remote
+    toggle_remote,
+    worker_refresh
 } from '.';
-import { getDomainURL, POCKETBASE } from '../../../src-tauri/api';
+import {
+    Computer,
+    getDomainURL,
+    POCKETBASE,
+    RenderNode
+} from '../../../src-tauri/api';
 import { EventCode, isMobile } from '../../../src-tauri/core';
 import {
+    Assign,
     CLIENT,
     MAX_BITRATE,
     MAX_FRAMERATE,
@@ -19,6 +27,7 @@ import {
     MIN_FRAMERATE,
     PINGER,
     ready,
+    set_hq,
     SIZE
 } from '../../../src-tauri/singleton';
 import { BuilderHelper } from './helper';
@@ -43,13 +52,17 @@ export type Metric = {
 
 type Data = {
     tracker_id?: string;
+    log_url?: string;
+    ping_status: boolean;
+
     active: boolean;
     ready: boolean;
     fullscreen: boolean;
     pointer_lock: boolean;
     relative_mouse: boolean;
     focus: boolean;
-    local: boolean;
+    hq: boolean;
+    direct_access: boolean;
 
     scancode: boolean;
     no_strict_timing: boolean;
@@ -65,13 +78,17 @@ type Data = {
     idrcount: number;
     realfps: number;
     realbitrate: number;
+    realdecodetime: number;
+    realdelay: number;
 
     auth?: AuthSessionResp;
     ref?: string;
 };
 
 const initialState: Data = {
-    local: false,
+    ping_status: true,
+    hq: false,
+    direct_access: false,
     focus: true,
     active: false,
     ready: false,
@@ -90,7 +107,9 @@ const initialState: Data = {
     idrcount: 0,
     realfps: 0,
     packetLoss: 0,
-    realbitrate: 0
+    realbitrate: 0,
+    realdelay: 0,
+    realdecodetime: 0
 };
 
 export function WindowD() {
@@ -109,22 +128,43 @@ export const setClipBoard = async (content: string) => {
 export const remoteAsync = {
     check_worker: async () => {
         if (!store.getState().remote.active) return;
-        else if (store.getState().remote.local) return;
-        else if (CLIENT == null || !CLIENT?.ready()) return;
+        else if (store.getState().remote.direct_access) return;
+        else if (CLIENT == null) return;
+        else if (
+            CLIENT.Metrics.audio.status == 'connected' ||
+            CLIENT.Metrics.video.status == 'connected'
+        )
+            return;
 
-        // TODO
+        await appDispatch(worker_refresh());
+        if (
+            (
+                new RenderNode(store.getState().worker.data).data[0]
+                    ?.info as Computer
+            )?.available != 'started'
+        ) {
+            appDispatch(
+                popup_open({
+                    type: 'complete',
+                    data: {
+                        success: false,
+                        content: 'Your PC was shutdown!'
+                    }
+                })
+            );
+            appDispatch(close_remote());
+        }
     },
     ping_session: async () => {
-        const state = store.getState();
-        const { remote, popup } = state;
-
-        if (!remote.active || CLIENT == null) return;
+        const { active, ping_status } = store.getState().remote;
+        const data_stack = store.getState().popup.data_stack;
+        if (!active || CLIENT == null) return;
 
         const lastactive = () =>
             Math.min(CLIENT?.hid?.last_active(), CLIENT?.touch?.last_active());
 
         if (lastactive() > 5 * 60) {
-            if (popup.data_stack.length > 0) return;
+            if (data_stack.length > 0) return;
 
             appDispatch(
                 popup_open({
@@ -143,7 +183,10 @@ export const remoteAsync = {
             appDispatch(popup_close());
         }
 
-        PINGER();
+        if ((await PINGER()) > 5 && ping_status)
+            appDispatch(remoteSlice.actions.ping_status(false));
+        else if (!ping_status)
+            appDispatch(remoteSlice.actions.ping_status(true));
     },
     sync: () => {
         const {
@@ -156,6 +199,7 @@ export const remoteAsync = {
         } = store.getState().remote;
         if (!active) return;
         else if (CLIENT == null || !CLIENT?.ready()) return;
+        if (isMobile()) CLIENT.PointerVisible(true);
 
         const {
             gamePadHide,
@@ -164,14 +208,15 @@ export const remoteAsync = {
         } = store.getState().sidepane.mobileControl;
         CLIENT.touch.mode =
             gamePadHide && keyboardHide && !draggable ? 'trackpad' : 'none';
-        if (isMobile()) CLIENT.PointerVisible(true);
 
         appDispatch(
             remoteSlice.actions.metrics({
                 packetloss: CLIENT.Metrics.video.packetloss.last,
                 idrcount: CLIENT.Metrics.video.idrcount.last,
                 bitrate: CLIENT.Metrics.video.bitrate.persecond,
-                fps: CLIENT.Metrics.video.frame.persecond
+                fps: CLIENT.Metrics.video.frame.persecond,
+                decodetime: CLIENT.Metrics.video.frame.decodetime,
+                delay: CLIENT.Metrics.video.frame.delay
             })
         );
 
@@ -186,7 +231,7 @@ export const remoteAsync = {
         'direct_access',
         async ({ ref }: { ref: string }) => {
             const resp = await fetch(
-                `${window.location.origin}/api/collections/reference/records?page=1&perPage=1&filter=token="${ref}"&skipTotal=1`,
+                `${getDomainURL()}/api/collections/reference/records?page=1&perPage=1&filter=token="${ref}"&skipTotal=1`,
                 {
                     method: 'GET',
                     headers: {
@@ -198,7 +243,19 @@ export const remoteAsync = {
 
             const data = await resp.json();
 
-            if (data.items.length == 0) throw new Error('not found any query');
+            // TODO
+            // const isUUID = (uuid?: string) =>
+            //     uuid?.match(
+            //         '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$'
+            //     ) != null;
+            // if (data.items.length == 0) throw new Error('not found any query');
+            // else if (isUUID(data.items[0].volume_id))
+            //     SetPinger(
+            //         KeepaliveVolume(
+            //             { address: getDomain() } as Computer,
+            //             data.items[0].volume_id
+            //         )
+            //     );
 
             appDispatch(remote_connect({ ...(data.items[0] as any) }));
             if (!(await ready())) appDispatch(close_remote());
@@ -211,6 +268,7 @@ export const remoteAsync = {
             audioUrl: string;
             videoUrl: string;
             rtc_config: RTCConfiguration;
+            volume_id?: string;
         }): Promise<string> => {
             const token = uuidv4();
             await POCKETBASE.collection('reference').create({ ...info, token });
@@ -226,6 +284,14 @@ export const remoteAsync = {
     load_setting: createAsyncThunk('load_setting', async (_: void) => {
         // TODO
     }),
+    copy_log: createAsyncThunk('copy_log', async (_: void, { getState }) => {
+        const url = (getState() as RootState).remote.log_url;
+        if (url == undefined) throw new Error('log url is not defined');
+
+        const resp = await fetch(url);
+        if (!resp.ok) throw new Error(await resp.text());
+        else navigator.clipboard.writeText(await resp.text());
+    }),
     toggle_remote_async: createAsyncThunk(
         'toggle_remote_async',
         async (_: void, {}) => {
@@ -240,10 +306,11 @@ export const remoteAsync = {
             appDispatch(
                 popup_open({
                     type: 'notify',
-                    data: { loading: true, title: 'Connect to PC' }
+                    data: { loading: true, title: 'Reset video & audio' }
                 })
             );
             await CLIENT.HardReset();
+            await new Promise((r) => setTimeout(r, 3000));
             await ready();
             appDispatch(popup_close());
         }
@@ -257,14 +324,14 @@ export const remoteSlice = createSlice({
         remote_connect: (
             state,
             {
-                payload: { audioUrl, videoUrl, rtc_config }
+                payload: { audioUrl, videoUrl, logUrl, rtc_config }
             }: PayloadAction<{
                 audioUrl: string;
                 videoUrl: string;
+                logUrl?: string;
                 rtc_config: RTCConfiguration;
             }>
         ) => {
-            state.local = true;
             state.auth = {
                 id: undefined,
                 webrtc: rtc_config,
@@ -274,12 +341,17 @@ export const remoteSlice = createSlice({
                 }
             };
 
+            state.log_url = logUrl;
             state.active = true;
             state.fullscreen = true;
             state.ready = false;
         },
         remote_ready: (state) => {
             state.ready = true;
+        },
+        toggle_hq: (state) => {
+            set_hq(!state.hq);
+            state.hq = !state.hq;
         },
         share_reference: (state) => {
             const token = state.ref;
@@ -296,11 +368,15 @@ export const remoteSlice = createSlice({
         have_focus: (state) => {
             state.focus = true;
         },
+        ping_status: (state, action: PayloadAction<boolean>) => {
+            state.ping_status = action.payload;
+        },
         close_remote: (state) => {
             state.active = false;
             state.auth = undefined;
             state.fullscreen = false;
             CLIENT?.Close();
+            Assign(null);
         },
         toggle_remote: (state) => {
             if (!state.active) {
@@ -348,12 +424,16 @@ export const remoteSlice = createSlice({
                 idrcount: number;
                 bitrate: number;
                 fps: number;
+                decodetime: number;
+                delay: number;
             }>
         ) => {
             state.idrcount = action.payload.idrcount;
             state.packetLoss = action.payload.packetloss;
             state.realbitrate = action.payload.bitrate;
             state.realfps = action.payload.fps;
+            state.realdecodetime = action.payload.decodetime;
+            state.realdelay = action.payload.delay;
         },
         internal_sync: (state) => {
             if (
@@ -418,6 +498,12 @@ export const remoteSlice = createSlice({
             {
                 fetch: remoteAsync.hard_reset_async,
                 hander: (state, action: PayloadAction<void>) => {}
+            },
+            {
+                fetch: remoteAsync.direct_access,
+                hander: (state, action: PayloadAction<void>) => {
+                    state.direct_access = true;
+                }
             }
         );
     }

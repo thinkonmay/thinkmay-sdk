@@ -4,55 +4,25 @@ import { TbLoader3 } from 'react-icons/tb';
 import { useAppSelector } from '../../../backend/reducers';
 import { Contents } from '../../../backend/reducers/locales';
 
-const TIME_RUN_OUT_OF_GPU = 150 * 1000; //sec
 export function notify({
     data: { title, tips = true, loading = true, text, timeProcessing = 3.5 }
 }) {
     const t = useAppSelector((state) => state.globals.translation);
-    const [textTrans, setTextTrans] = useState('');
-    const [isLaterThan15s, setIsLaterThan15s] = useState(false);
-
-    const [isShowTip, setShowTip] = useState(tips);
-    useEffect(() => {
-        let interval;
-        if (title == 'Connect to PC') {
-            const referenceTime = new Date();
-            const laterTime = new Date(
-                referenceTime.getTime() + TIME_RUN_OUT_OF_GPU
-            );
-
-            interval = setInterval(() => {
-                const currentTime = new Date();
-                if (currentTime > laterTime) {
-                    setIsLaterThan15s(true);
-                    setTextTrans(t[Contents.RUN_OUT_OF_GPU_STOCK_NOTIFY]);
-                    setShowTip(false);
-                    clearInterval(interval);
-                }
-            }, 6000);
-        }
-
-        return () => clearInterval(interval);
-    }, [title]);
-    useEffect(() => {
-        if (t[text]) setTextTrans(t[text]);
-
-        setTextTrans(text);
-    }, [text]);
-
     return (
-        <div className="w-[330px] h-auto p-[14px] pb-6">
+        <div className="w-[330px] md:w-[440px] h-auto p-[14px] md:p-[24px] pb-6 md:pb-8">
             <div className="notify-icon">
                 <TbLoader3 className="animate-spin" />
             </div>
-            <p className="text-center text-[1.2rem] mb-[16px]">
+            <p className="text-center text-[1.2rem] md:text-3xl mb-[16px]">
                 {title ?? 'Please wait...'}
             </p>
-            {textTrans ? <p className="mb-3"> {textTrans} </p> : null}
-            {loading && !isLaterThan15s ? (
+            {text ? (
+                <p className="mb-3 md:text-xl text-center"> {text} </p>
+            ) : null}
+            {loading ? (
                 <LoadingProgressBar timeProcessing={timeProcessing} />
             ) : null}
-            {isShowTip ? <Protip /> : null}
+            {tips ? <Protip /> : null}
         </div>
     );
 }
@@ -77,7 +47,7 @@ const LoadingProgressBar = ({ timeProcessing }) => {
 
     return (
         <div className="loading-container !relative">
-            <div className="loading-bar">
+            <div className="loading-bar relative">
                 <div
                     className="loading-progress"
                     style={{ width: `${loading}%` }}
@@ -114,7 +84,7 @@ const Protip = () => {
     }, []);
     return (
         <div className="mt-[24px]">
-            <strong>Pro tip:</strong>
+            <strong className="md:text-xl">Pro tip:</strong>
             <p className="mt-[8px]">{listDemoTip[currentTip]}</p>
         </div>
     );

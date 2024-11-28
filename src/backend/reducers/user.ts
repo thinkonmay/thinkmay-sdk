@@ -1,12 +1,29 @@
 import { createAsyncThunk, createSlice, PayloadAction } from '@reduxjs/toolkit';
+import dayjs from 'dayjs';
 import { RecordModel } from 'pocketbase';
 import { POCKETBASE } from '../../../src-tauri/api';
 import { BuilderHelper } from './helper';
+type Usage = {
+    node: string;
+    total_usage: number;
+    template: {
+        image: string | null;
+        code: string;
+        name: string;
+    };
+    isExpired?: boolean;
+};
 
 type Data = RecordModel & {
     volume_id: string;
 };
 
+const notexpired = () =>
+    `ended_at.gt.${new Date().toISOString()},ended_at.is.${null}`;
+const isUUID = (uuid) =>
+    uuid.match(
+        '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$'
+    ) != null;
 const initialState: Data = {
     collectionId: '',
     collectionName: '',

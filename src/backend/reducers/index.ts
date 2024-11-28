@@ -84,6 +84,7 @@ export const {
     toggle_fullscreen,
     set_fullscreen,
     pointer_lock,
+    toggle_hq,
     homescreen,
     relative_mouse
 } = remoteSlice.actions;
@@ -108,11 +109,12 @@ export const {
 } = workerAsync;
 export const { fetch_user } = userAsync;
 export const {
+    check_worker,
     ping_session,
     sync,
     direct_access,
     save_reference,
-    check_worker,
+    copy_log,
     load_setting,
     cache_setting,
     toggle_remote_async,

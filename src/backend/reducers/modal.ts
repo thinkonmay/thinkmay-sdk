@@ -15,6 +15,47 @@ type PopupData =
               text?: any;
               timeProcessing?: number;
           };
+      }
+    | {
+          type: 'extendService';
+          data: {
+              type: 'date_limit' | 'hour_limit' | 'expired';
+              to: string;
+              available_time?: number;
+          };
+      }
+    | {
+          type: 'maintain';
+          data: {
+              start: string;
+              end: string;
+          };
+      }
+    | {
+          type: 'redirectDomain';
+          data: {
+              domain: string;
+              from: string;
+          };
+      }
+    | {
+          type: 'shareLink';
+          data: {
+              link: string;
+          };
+      }
+    | {
+          type: 'info';
+          data: {
+              title: string;
+              text: any;
+          };
+      }
+    | {
+          type: 'yesNo';
+          data: {
+              template: string;
+          };
       };
 
 type Data = {
@@ -35,7 +76,20 @@ export const modalSlice = createSlice({
             state.data_stack = [...state.data_stack, action.payload];
         },
         popup_close: (state) => {
-            state.data_stack.pop();
+            const preferred = ['extendService', 'redirectDomain', 'maintain'];
+            //const preferred_title = 'Connect to PC';
+
+            state.data_stack = [];
+            //const rm = state.data_stack.findIndex(
+            //    (x) =>
+            //        !preferred.includes(x.type)
+            //    //&&
+            //    //!(x.type == 'notify' && x.data.title == preferred_title)
+            //);
+
+            //state.data_stack = state.data_stack.filter(
+            //    (val, index) => index != (rm != -1 ? rm : 0)
+            //);
         }
     }
 });
