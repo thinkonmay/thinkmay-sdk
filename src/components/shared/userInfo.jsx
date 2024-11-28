@@ -1,12 +1,10 @@
-import { MdOutlinePowerSettingsNew } from 'react-icons/md';
-import { RenderNode } from '../../../src-tauri/api';
+import { MdOutlineLink } from 'react-icons/md';
 import { changeTheme } from '../../backend/actions';
 import {
     appDispatch,
-    unclaim_volume,
+    popup_open,
     useAppSelector,
-    user_delete,
-    wait_and_claim_volume
+    user_delete
 } from '../../backend/reducers';
 import { Contents } from '../../backend/reducers/locales';
 import { formatDate } from '../../backend/utils/date';
@@ -17,72 +15,70 @@ import './index.scss';
 function UserInfo() {
     const correctsite = useAppSelector(
         (state) =>
-            (state.user.subscription.status == 'IMPORTED' ||
-                state.user.subscription.status == 'PAID') &&
+            state.user.subscription.status == 'PAID' &&
             state.user.subscription.correct_domain
     );
     const {
         email,
-        subscription: {
-            node,
-            cluster,
-            plan,
-            total_usage,
-            limit_hour,
-            created_at,
-            ended_at,
-            template
-        }
+        volume_id,
+        subscription: { status, cluster, created_at, ended_at, usage, policy }
     } = useAppSelector((state) => state.user);
-    const shutdownable = useAppSelector(
-        (state) => new RenderNode(state.worker.data).data[0]?.info?.available
-    );
+    const { node, total_usage } = usage ?? {};
+    const { limit_hour } = policy ?? {};
+
+    const copyClipboard = () => {
+        navigator.clipboard.writeText(volume_id);
+        appDispatch(
+            popup_open({
+                type: 'complete',
+                data: {
+                    success: true
+                }
+            })
+        );
+    };
+
     const thm = useAppSelector((state) => state.setting.person.theme);
     var icon = thm == 'light' ? 'sun' : 'moon';
     const t = useAppSelector((state) => state.globals.translation);
 
-    const renderPlanName = {
-        month1: (
-            <div className="restWindow w-full  flex flex-col ">
-                <div className="w-full flex gap-4 justify-between mt-1 items-end">
-                    <span className="text-left">{t[Contents.STARTAT]}</span>
-                    <span>{formatDate(created_at)}</span>
-                </div>
-                {ended_at ? (
-                    <div className="w-full flex gap-4 justify-between mt-1 items-end">
-                        <span className="text-left">{t[Contents.ENDAT]}</span>
-                        <span>{formatDate(ended_at)}</span>
-                    </div>
-                ) : null}
-                {correctsite ? (
-                    <div className="w-full flex gap-4 justify-between mt-4 items-end">
-                        <span className="text-left">{t[Contents.TIME]}</span>
-                        <span>
-                            {(+total_usage / 60).toFixed(2)}h / {limit_hour}h
-                        </span>
-                    </div>
-                ) : null}
-                {template && correctsite ? (
-                    <div className="w-full flex gap-4 justify-between mt-1 items-end">
-                        <span className="text-left">Template</span>
-                        <span>{template}</span>
-                    </div>
-                ) : null}
-                {cluster ? (
-                    <div className="w-full flex gap-4 justify-between mt-1 items-end">
-                        <span className="text-left">Domain</span>
-                        <span>{cluster}</span>
-                    </div>
-                ) : null}
-                {node && correctsite ? (
-                    <div className="w-full flex gap-4 justify-between mt-1 items-end">
-                        <span className="text-left">Node</span>
-                        <span>{node}</span>
-                    </div>
-                ) : null}
+    const Paid = () => (
+        <div className="restWindow w-full  flex flex-col ">
+            <div className="w-full flex gap-4 justify-between mt-1 items-end">
+                <span className="text-left">{t[Contents.STARTAT]}</span>
+                <span>{formatDate(created_at)}</span>
             </div>
-        ),
-        hour1: <div className="restWindow w-full  flex flex-col "></div>,
+            {ended_at ? (
+                <div className="w-full flex gap-4 justify-between mt-1 items-end">
+                    <span className="text-left">{t[Contents.ENDAT]}</span>
+                    <span>{formatDate(ended_at)}</span>
+                </div>
+            ) : null}
+            {correctsite ? (
+                <div className="w-full flex gap-4 justify-between mt-1 items-end">
+                    <span className="text-left">{t[Contents.TIME]}</span>
+                    <span>
+                        {total_usage?.toFixed(1)} / {limit_hour}h
+                    </span>
+                </div>
+            ) : null}
+            {cluster ? (
+                <div className="w-full flex gap-4 justify-between mt-1 items-end">
+                    <span className="text-left">Domain</span>
+                    <span>{cluster}</span>
+                </div>
+            ) : null}
+            {node && correctsite ? (
+                <div className="w-full flex gap-4 justify-between mt-1 items-end">
+                    <span className="text-left">Node</span>
+                    <span>{node}</span>
+                </div>
+            ) : null}
+        </div>
+    );
+
+    const renderPlanName = {
+        PAID: <Paid />,
         undefined: (
             <div className="restWindow w-full  flex flex-col ">
                 <div className="w-full flex gap-4 justify-between mt-2 items-end">
@@ -112,7 +108,16 @@ function UserInfo() {
                         <span>Language</span>
                         <LangSwitch />
                     </div>
-                    <div className="w-full flex gap-4 justify-between mb-[12px] md:mb-[24px]">
+                    <div className="w-full flex gap-4 justify-between mt-[1rem]">
+                        <span>Volume ID</span>
+                        <div
+                            className="strBtn handcr prtclk"
+                            onClick={copyClipboard}
+                        >
+                            <MdOutlineLink width={14} />
+                        </div>
+                    </div>
+                    <div className="w-full flex gap-4 justify-between mt-[1rem]">
                         <span>Theme</span>
                         <div
                             className="strBtn handcr prtclk"
@@ -126,44 +131,7 @@ function UserInfo() {
                             />
                         </div>
                     </div>
-                    <div className="w-full flex gap-4 justify-between mb-[12px] md:mb-[24px] ">
-                        {correctsite ? (
-                            shutdownable == 'started' ? (
-                                <>
-                                    <span>Shut down</span>
-                                    <div
-                                        className="strBtn handcr prtclk"
-                                        onClick={() =>
-                                            appDispatch(unclaim_volume())
-                                        }
-                                    >
-                                        <MdOutlinePowerSettingsNew
-                                            size={'1rem'}
-                                        />
-                                    </div>
-                                </>
-                            ) : shutdownable == 'ready' ? (
-                                <>
-                                    <span>Connect</span>
-                                    <div
-                                        className="strBtn handcr prtclk"
-                                        onClick={() =>
-                                            appDispatch(wait_and_claim_volume())
-                                        }
-                                    >
-                                        <Icon
-                                            className="quickIcon"
-                                            ui={true}
-                                            src={'power'}
-                                            width={14}
-                                        />
-                                    </div>
-                                </>
-                            ) : null
-                        ) : null}
-                    </div>
-
-                    {renderPlanName[plan]}
+                    {renderPlanName[status]}
                 </div>
             </div>
 

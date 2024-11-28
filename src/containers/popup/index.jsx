@@ -7,21 +7,23 @@ import {
 import './index.scss';
 import * as modals from './modal';
 
+const preferred = ['extendService', 'redirectDomain', 'maintain'];
+const preferred_title = 'Connect to PC';
 const Popup = () => {
-    const popup = useAppSelector((state) =>
-        state.popup.data_stack.find(
-            (x) => x.type == 'complete' && !x.data.success
-        ) ??
-        state.popup.data_stack.find((x) => x.type == 'notify') ??
-        state.popup.data_stack.at
-            ? state.popup.data_stack.at(-1)
-            : undefined
+    const popup = useAppSelector(
+        (state) =>
+            state.popup.data_stack.find(
+                (x) => x.type == 'complete' && !x.data.success
+            ) ??
+            (state.popup.data_stack.length > 0
+                ? state.popup.data_stack[state.popup.data_stack.length - 1]
+                : undefined)
     );
 
     const closeModal = () => {
         popup.type == 'complete' ||
         popup.type == 'maintain' ||
-        popup.type == 'gameChoose'
+        popup.type == 'shareLink'
             ? appDispatch(popup_close())
             : null;
     };

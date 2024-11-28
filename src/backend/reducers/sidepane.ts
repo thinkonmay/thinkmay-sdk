@@ -1,5 +1,5 @@
 import { PayloadAction, createAsyncThunk, createSlice } from '@reduxjs/toolkit';
-import { appDispatch, render_message, store } from '.';
+import { RootState, appDispatch, render_message, store } from '.';
 import { LOCAL } from '../../../src-tauri/api';
 import { DevEnv } from '../../../src-tauri/api/database';
 import { BuilderHelper, CacheRequest } from './helper';
@@ -96,21 +96,9 @@ const listMobileShortCut = [
     {
         name: 'Ctrl V',
         val: ['control', 'v']
-    },
-    {
-        name: 'Back',
-        val: ['Backspace']
     }
 ];
 const listMobileSettings = [
-    {
-        ui: true,
-        id: 'resetVideoBtn',
-        src: 'MdOutlineResetTv',
-        name: [Contents.RESET_VIDEO],
-        state: 'network.airplane',
-        action: 'hard_reset_async'
-    },
     {
         ui: true,
         id: 'fullscrenBtn',
@@ -141,7 +129,7 @@ const listMobileSettings = [
         src: 'MdOutlineLink',
         name: [Contents.EXTERNAL_TAB],
         state: 'network.airplane',
-        action: 'remote/share_reference'
+        action: 'showLinkShare'
     },
     {
         ui: true,
@@ -152,6 +140,29 @@ const listMobileSettings = [
         state: 'shutdown',
         action: 'shutDownVm',
         style: { backgroundColor: '#d92d20', color: '#f3f4f5' }
+    },
+    {
+        ui: true,
+        id: 'loggerBtn',
+        src: 'MdTextSnippet',
+        name: [Contents.DEBUGGER],
+        state: 'copy_log',
+        action: 'copy_log'
+    },
+    {
+        ui: true,
+        id: 'loggerBtn',
+        src: 'MdHighQuality',
+        name: [Contents.MAXIMUM_QUALITY],
+        state: 'hq',
+        action: 'toggle_hq'
+    },
+    {
+        id: 'fixKeyboardBtnMobile',
+        src: 'MdAutoFixHigh',
+        name: [Contents.SCAN_CODE],
+        state: 'scancode',
+        action: 'remote/scancode_toggle'
     }
 ];
 const listDesktopShortCut = [
@@ -161,15 +172,6 @@ const listDesktopShortCut = [
     }
 ];
 const listDesktopSettings = [
-    {
-        ui: true,
-        id: 'resetVideoBtn',
-
-        src: 'MdOutlineResetTv',
-        name: [Contents.RESET_VIDEO],
-        state: 'network.airplane',
-        action: 'hard_reset_async'
-    },
     {
         ui: true,
         id: 'fullscrenBtn',
@@ -194,7 +196,7 @@ const listDesktopSettings = [
         src: 'MdOutlineLink',
         name: [Contents.EXTERNAL_TAB],
         state: 'share_reference',
-        action: 'remote/share_reference'
+        action: 'showLinkShare'
     },
     {
         ui: true,
@@ -215,6 +217,22 @@ const listDesktopSettings = [
         action: 'shutDownVm',
         style: { backgroundColor: '#d92d20', color: '#f3f4f5' }
     },
+    {
+        ui: true,
+        id: 'loggerBtn',
+        src: 'MdTextSnippet',
+        name: [Contents.DEBUGGER],
+        state: 'copy_log',
+        action: 'copy_log'
+    },
+    {
+        ui: true,
+        id: 'loggerBtn',
+        src: 'MdHighQuality',
+        name: [Contents.MAXIMUM_QUALITY],
+        state: 'hq',
+        action: 'toggle_hq'
+    },
     ...(!DevEnv
         ? []
         : [
@@ -225,6 +243,14 @@ const listDesktopSettings = [
                   name: [Contents.VIDEO_TOGGLE],
                   state: 'active',
                   action: 'toggle_remote_async'
+              },
+              {
+                  ui: true,
+                  id: 'reset',
+                  src: 'MdResetTv',
+                  name: [Contents.RESET_APP],
+                  state: 'hard_reset_async',
+                  action: 'hard_reset_async'
               }
           ])
 ];
@@ -285,7 +311,8 @@ export const sidepaneAsync = {
     },
     fetch_message: createAsyncThunk(
         'fetch_message',
-        async (email: string, { getState }): Promise<Message[]> => {
+        async (_, { getState }): Promise<Message[]> => {
+            const email = (getState() as RootState).user.email;
             LOCAL()
                 .channel('schema-message-changes')
                 .on(

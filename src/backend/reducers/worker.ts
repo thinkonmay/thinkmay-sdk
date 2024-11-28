@@ -10,6 +10,7 @@ import {
     remote_ready,
     RootState,
     save_reference,
+    store,
     unclaim_volume,
     vm_session_access,
     vm_session_create,
@@ -38,6 +39,7 @@ import {
 } from '../../../src-tauri/api';
 import { ready, SetPinger } from '../../../src-tauri/singleton';
 import { BuilderHelper } from './helper';
+import { Contents } from './locales';
 
 type WorkerType = {
     data: any;
@@ -59,6 +61,26 @@ const initialState: WorkerType = {
 };
 
 export const workerAsync = {
+    showPosition: async (pos: number) => {
+        const t = (store.getState() as RootState).globals.translation;
+        appDispatch(popup_close());
+        appDispatch(
+            popup_open({
+                type: 'notify',
+                data: {
+                    loading: false,
+                    tips: true,
+                    title: 'Connect to PC',
+                    text:
+                        pos == 0
+                            ? t[Contents.CA_FIRST_QUEUED]
+                            : `${t[Contents.CA_POS_QUEUED_FRIST]} ${pos + 1} ${
+                                  t[Contents.CA_POS_QUEUED_LAST]
+                              }`
+                }
+            })
+        );
+    },
     worker_refresh: createAsyncThunk(
         'worker_refresh',
         async (): Promise<void> => {
@@ -75,11 +97,12 @@ export const workerAsync = {
         'wait_and_claim_volume',
         async (_: void, { getState }) => {
             const { email, subscription } = (getState() as RootState).user;
+            const t = (getState() as RootState).globals.translation;
             const { status } = subscription;
             const { vcpu, ram } =
-                status == 'PAID' || status == 'IMPORTED'
+                status == 'PAID'
                     ? subscription.local_metadata
-                    : { vcpu: '16', ram: '16' };
+                    : { vcpu: '8', ram: '16' };
 
             await appDispatch(worker_refresh());
             appDispatch(
@@ -136,14 +159,18 @@ export const workerAsync = {
                                 loading: false,
                                 tips: false,
                                 title: 'Connecting video & audio',
-                                text: 'Vui lòng giữ tab cho tới khi connect xong!'
+                                text: t[Contents.CA_CONNECT_NOTIFY]
                             }
                         })
                     );
                     const [{ id }] = result.data;
                     const interval = setInterval(keepalive, 30 * 1000);
                     await appDispatch(
-                        vm_session_access({ id, retry_method: 'claim' })
+                        vm_session_access({
+                            id,
+                            volume_id,
+                            retry_method: 'claim'
+                        })
                     );
                     clearInterval(interval);
 
@@ -162,14 +189,18 @@ export const workerAsync = {
                                 loading: false,
                                 tips: false,
                                 title: 'Connecting video & audio',
-                                text: 'Vui lòng giữ tab cho tới khi connect xong!'
+                                text: t[Contents.CA_CONNECT_NOTIFY]
                             }
                         })
                     );
                     const { id } = result;
                     const interval = setInterval(keepalive, 30 * 1000);
                     await appDispatch(
-                        vm_session_create({ id, retry_method: 'claim' })
+                        vm_session_create({
+                            id,
+                            volume_id,
+                            retry_method: 'claim'
+                        })
                     );
                     clearInterval(interval);
 
@@ -191,9 +222,50 @@ export const workerAsync = {
                     computer,
                     volume_id,
                     `${ram ?? 16}`,
-                    `${vcpu ?? 16}`
+                    `${vcpu ?? 8}`,
+                    workerAsync.showPosition
                 );
-                if (resp instanceof Error) {
+                if (!(resp instanceof Error))
+                    UserEvents({
+                        type: 'remote/request_vm_success',
+                        payload: {
+                            id,
+                            email
+                        }
+                    });
+                else if (
+                    resp.message.includes(
+                        'failed to retrieve disk info exit status 2 qemu-img: Could not open'
+                    ) &&
+                    resp.message.includes('Is another process using the image')
+                ) {
+                    // refresh worker to update the lastest worker state
+                } else if (
+                    resp.message.includes(
+                        'internal error: process exited while connecting to monitor'
+                    ) &&
+                    resp.message.includes('Is another process using the image')
+                ) {
+                    // refresh worker to update the lastest worker state
+                } else if (
+                    resp.message.includes(
+                        'internal error: process exited while connecting to monitor'
+                    ) &&
+                    resp.message.includes('Image is corrupt')
+                ) {
+                    UserEvents({
+                        type: 'remote/request_vm_failure',
+                        payload: {
+                            id,
+                            email,
+                            error: 'Your volume data is corrupted, are you installing new game?'
+                        }
+                    });
+                    appDispatch(popup_close());
+                    throw new Error(
+                        'Your volume data is corrupted, are you installing new game?'
+                    );
+                } else {
                     UserEvents({
                         type: 'remote/request_vm_failure',
                         payload: {
@@ -205,14 +277,6 @@ export const workerAsync = {
                     appDispatch(popup_close());
                     throw resp;
                 }
-
-                UserEvents({
-                    type: 'remote/request_vm_success',
-                    payload: {
-                        id,
-                        email
-                    }
-                });
 
                 await appDispatch(worker_refresh());
             }
@@ -244,25 +308,17 @@ export const workerAsync = {
             });
 
             if (found != undefined) {
-                const { data, error: errr } = await LOCAL()
-                    .from('volume_map')
-                    .select('id')
-                    .eq('id', volume_id)
-                    .eq('status', 'IMPORTED')
+                const { data, error: err } = await LOCAL()
+                    .from('job')
+                    .select('result')
+                    .eq('arguments->>id', volume_id)
+                    .order('created_at', { ascending: false })
                     .limit(1);
-                if (errr) throw new Error(errr.message);
-                else if (data.length == 1) node.info.available = 'ready';
-                else {
-                    const { data, error: err } = await LOCAL()
-                        .from('job')
-                        .select('result')
-                        .eq('arguments->>id', volume_id)
-                        .limit(1);
-                    if (err) throw new Error(err.message);
-                    else if (data.length > 0 && data[0].result == 'success')
-                        node.info.available = 'ready';
-                    else node.info.available = 'not_ready';
-                }
+                if (err) throw new Error(err.message);
+                else if (data.length == 0) node.info.available = 'ready';
+                else if (data[0].result == 'success')
+                    node.info.available = 'ready';
+                else node.info.available = 'not_ready';
 
                 if (found.type == 'vm_worker' && node.info.available == 'ready')
                     node.info.available = 'started';
@@ -392,9 +448,14 @@ export const workerAsync = {
         'vm_session_create',
         async (
             {
-                id: id,
+                id,
+                volume_id,
                 retry_method
-            }: { id: string; retry_method: 'claim' | 'ignore' },
+            }: {
+                id: string;
+                volume_id?: string;
+                retry_method: 'claim' | 'ignore';
+            },
             { getState }
         ): Promise<any> => {
             await appDispatch(worker_refresh());
@@ -425,7 +486,7 @@ export const workerAsync = {
             if (result instanceof Error) throw result;
             appDispatch(fetch_local_worker(host.info.address));
             appDispatch(remote_connect(result));
-            await appDispatch(save_reference(result));
+            await appDispatch(save_reference({ ...result, volume_id }));
             const success = await ready();
             if (!success && retry_method == 'claim')
                 appDispatch(workerAsync.retry_volume_claim());
@@ -439,8 +500,13 @@ export const workerAsync = {
         async (
             {
                 id,
+                volume_id,
                 retry_method
-            }: { id: string; retry_method: 'claim' | 'ignore' },
+            }: {
+                id: string;
+                volume_id?: string;
+                retry_method: 'claim' | 'ignore';
+            },
             { getState }
         ): Promise<any> => {
             const node = new RenderNode((getState() as RootState).worker.data);
@@ -461,7 +527,7 @@ export const workerAsync = {
             });
 
             appDispatch(remote_connect(result));
-            await appDispatch(save_reference(result));
+            await appDispatch(save_reference({ ...result, volume_id }));
             const success = await ready();
             if (!success && retry_method == 'claim')
                 appDispatch(workerAsync.retry_volume_claim());
@@ -642,11 +708,11 @@ export const workerSlice = createSlice({
             {
                 fetch: workerAsync.worker_reload,
                 hander: (state, action) => {}
+            },
+            {
+                fetch: workerAsync.wait_and_claim_volume,
+                hander: (state, action) => {}
             }
-            //{
-            //    fetch: workerAsync.wait_and_claim_volume,
-            //    hander: (state, action) => { }
-            //}
         );
     }
 });

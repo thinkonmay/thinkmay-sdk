@@ -55,8 +55,7 @@ export type RootState = ReturnType<typeof store.getState>;
 
 export const appDispatch = store.dispatch;
 export const useAppSelector: TypedUseSelectorHook<RootState> = useSelector;
-export const { update_language, choose_game, show_tutorial } =
-    globalSlice.actions;
+export const { update_language, show_tutorial } = globalSlice.actions;
 export const { user_delete, user_update, user_check_sub } = userSlice.actions;
 export const { task_audo, task_hide, task_show, task_toggle } =
     taskSlice.actions;
@@ -124,6 +123,7 @@ export const {
     toggle_fullscreen,
     set_fullscreen,
     pointer_lock,
+    toggle_hq,
     homescreen,
     relative_mouse
 } = remoteSlice.actions;
@@ -146,20 +146,28 @@ export const {
     peer_session_access,
     peer_session_close
 } = workerAsync;
-export const { fetch_user, fetch_subscription, get_payment } = userAsync;
 export const {
+    fetch_user,
+    fetch_subscription,
+    fetch_usage,
+    get_payment,
+    change_template
+} = userAsync;
+export const {
+    check_worker,
     ping_session,
     sync,
     direct_access,
     save_reference,
-    check_worker,
+    copy_log,
     load_setting,
     cache_setting,
     toggle_remote_async,
     hard_reset_async
 } = remoteAsync;
 
-export const { fetch_store, fetch_under_maintenance } = globalAsync;
+export const { fetch_store, fetch_under_maintenance, fetch_domain } =
+    globalAsync;
 export const { push_message, fetch_message } = sidepaneAsync;
 
 export const dispatch_generic = async ({

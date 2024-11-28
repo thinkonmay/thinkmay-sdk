@@ -1,38 +1,36 @@
 import { useState } from 'react';
 import { MdArrowDropDown, MdArrowRight } from 'react-icons/md';
+import { UserEvents } from '../../../../src-tauri/api';
 import { login } from '../../../backend/actions';
 import {
     appDispatch,
     get_payment,
-    popup_open,
     useAppSelector
 } from '../../../backend/reducers';
-import {
-    Image,
-    LazyComponent,
-    ToolBar
-} from '../../../components/shared/general';
+import { LazyComponent, ToolBar } from '../../../components/shared/general';
 import './assets/store.scss';
-import { UserEvents } from '../../../../src-tauri/api';
 
 const listSubs = [
     {
+        active: false,
         highlight: false,
-        title: 'Gói giờ',
-        price_in_vnd: '8',
-        under_price: 'Mua tối thiểu 5 giờ mỗi lần',
-
-        name: 'hour2',
-        period: 'h',
+        title: 'Gói tuần',
+        price_in_vnd: '99',
+        under_price: 'Giới hạn 25h sử dụng trong 7 ngày',
+        name: 'week1',
+        period: 'tuần',
         bonus: [
-            'Chơi sẵn các game trong store games',
-            'Không lưu dữ liệu sau khi tắt máy'
-        ],
-        hoursChoose: 5
+            'RTX 3060TI',
+            '16GB ram',
+            '150GB dung lượng riêng, Cloud-save',
+            'Không giới hạn thời gian mỗi session',
+            'Có hàng chờ'
+        ]
     },
     {
+        active: true,
         highlight: true,
-        title: 'Tiết kiệm',
+        title: 'Gói tháng',
         price_in_vnd: '299',
         total_time: '150',
         under_price: 'Giới hạn 150h sử dụng trong tháng',
@@ -48,8 +46,9 @@ const listSubs = [
         storage: ['50GB: 70k/tháng', '100GB: 120k/tháng']
     },
     {
+        active: true,
         highlight: false,
-        title: 'Unlimited',
+        title: 'Gói cao cấp',
         price_in_vnd: '1699',
         period: 'tháng',
         total_time: 'Không giới hạn',
@@ -71,7 +70,7 @@ export const PaymentApp = () => {
 
     return (
         <div
-            className="paymentApp floatTab dpShad"
+            className="paymentApp wnstore floatTab dpShad"
             data-size={wnapp.size}
             id={wnapp.id + 'App'}
             data-max={wnapp.max}
@@ -104,48 +103,36 @@ export const PaymentApp = () => {
 };
 
 const SubscriptionCard = ({ subInfo: sub }) => {
-    const domains = useAppSelector((state) => state.user.subscription.domains);
+    const status = useAppSelector((state) => state.user.subscription.status);
+    const domains = useAppSelector((state) => state.globals.domains);
     const not_logged_in = useAppSelector((state) => state.user.id == 'unknown');
-    const max =
-        domains?.findIndex(
-            (y) => y.free == Math.max(...domains.map((x) => x.free))
-        ) ?? 0;
+    const max = useAppSelector(
+        (state) =>
+            state.globals.domains?.findIndex(
+                (y) =>
+                    y.free ==
+                    Math.max(...state.globals.domains.map((x) => x.free))
+            ) ?? -1
+    );
 
-    const [domain, setDomain] = useState(domains?.[max].domain ?? 'unknown');
-    const onChooseSub = () =>
+    const [domain, setDomain] = useState(domains?.[max]?.domain ?? 'unknown');
+    const onChooseSub = (plan_name) =>
         not_logged_in
             ? login('google', false)
-            : domains != undefined
+            : status != 'PAID'
               ? appDispatch(
                     get_payment({
-                        template: gameChoose.template,
-                        plan: sub.name,
+                        plan_name,
                         domain
                     })
                 )
-              : appDispatch(get_payment());
+              : appDispatch(
+                    get_payment({
+                        plan_name
+                    })
+                );
 
-    const [isShowDetail, setShowDetail] = useState(
-        sub.name == 'month1' ? true : false
-    );
-    const gameChooseSubscription = useAppSelector(
-        (state) => state.globals.gameChooseSubscription
-    );
-    const gameChoose = useAppSelector((state) =>
-        state.globals.gamesInSubscription.find(
-            (item) => item.template == gameChooseSubscription?.template
-        )
-    );
-    const openChooseGames = (subName) =>
-        appDispatch(
-            popup_open({
-                type: 'gameChoose',
-                data: {
-                    planName: subName
-                }
-            })
-        );
-
+    const [isShowDetail, setShowDetail] = useState(sub.highlight);
     const clickDetail = () => {
         setShowDetail((old) => !old);
         UserEvents({
@@ -155,11 +142,11 @@ const SubscriptionCard = ({ subInfo: sub }) => {
     };
 
     return (
-        <div className="sub relative">
+        <div className="sub ltShad relative">
             {sub.highlight ? (
-                <div className="absolute rounded-[36px] bg-amber-600 absolute inset-0 z-[-1] w-[102%]  top-[-37px] bottom-[-6px] left-[-1%]">
-                    <p className="text-[16px] leading-4 text-center py-2 mt-[4px] text-background">
-                        Gói phổ biến nhất
+                <div className="banner">
+                    <p className="text-[16px] font-bold leading-4 text-center py-2 text-background">
+                        Phổ biến
                     </p>
                 </div>
             ) : null}
@@ -174,7 +161,7 @@ const SubscriptionCard = ({ subInfo: sub }) => {
                         </div>
                     </div>
 
-                    <hr className="border-[#504646]" />
+                    <hr />
                     <div className=" text-foreground flex items-center text-lg min-h-[116px]">
                         <div className="flex flex-col gap-1">
                             <div className="flex items-end gap-2">
@@ -202,12 +189,12 @@ const SubscriptionCard = ({ subInfo: sub }) => {
                             </div>
                         </div>
                     </div>
-                    <hr className="border-[#504646]" />
+                    <hr />
                 </div>
                 <div className="border-default bg-surface-100 flex h-full rounded-bl-[4px] rounded-br-[4px] flex-1 flex-col px-4 2xl:px-8 py-6 ">
                     <div
                         onClick={clickDetail}
-                        className="flex items-center text-foreground-light text-[13px] mt-2 mb-2"
+                        className="flex cursor-pointer items-center text-foreground-light text-[13px] mt-2 mb-2 hover:underline"
                     >
                         {isShowDetail ? (
                             <MdArrowDropDown style={{ fontSize: '1.6rem' }} />
@@ -251,77 +238,59 @@ const SubscriptionCard = ({ subInfo: sub }) => {
                         <div className="space-y-2">
                             <p className="text-[13px] whitespace-pre-wrap"></p>
                         </div>
-                        {sub.name == 'month1' && domains != undefined ? (
-                            <div className="flex flex-col">
-                                <button
-                                    className="mt-4 w-full mx-auto border-[#000] border-[1px] border-solid shadow-sm btn btn-secondary"
-                                    onClick={() => openChooseGames(sub.name)}
-                                >
-                                    Game có sẵn trên máy
-                                </button>
-                                <span className="mt-2 w-full mx-auto shadow-sm">
-                                    Chọn server:
-                                </span>
-                            </div>
-                        ) : null}
-                        {sub.name == 'month1' ? (
-                            <div className="flex flex-col gap-2 mb-4">
-                                {domains?.map(({ domain, free }, index) =>
-                                    free > 0 ? (
-                                        <label
-                                            key={index}
-                                            className="text-blue-500 flex gap-2 items-center"
-                                            htmlFor="server1"
-                                        >
-                                            <input
-                                                defaultChecked={index == max}
-                                                onChange={(e) =>
-                                                    e.target.checked
-                                                        ? setDomain(domain)
-                                                        : null
-                                                }
-                                                data={domain}
-                                                type="radio"
-                                                name="server"
-                                                id="server1"
-                                            />
-                                            <span
-                                                name="play"
-                                                className="text-blue-500"
-                                            >
-                                                {domain}
-                                            </span>
-                                            <div className="flex gap-2 items-center text-xs">
-                                                {free} chỗ trống
-                                                {index == max ? (
-                                                    <GreenLight />
-                                                ) : null}
-                                            </div>
-                                        </label>
-                                    ) : null
-                                )}
-                            </div>
-                        ) : null}
-                        {gameChoose?.template &&
-                        sub.name == gameChooseSubscription.planName ? (
-                            <div
-                                key={gameChoose.name}
-                                className="flex flex-col py-4 w-[80px] mx-auto my-5 h-[100px] rounded-lg bg-[#2d3146]"
-                            >
-                                <Image
-                                    w={40}
-                                    h={40}
-                                    ext
-                                    absolute
-                                    src={gameChoose.logo}
-                                />
-                                <div className="name mt-auto capitalize text-white  text-xs text-center font-semibold">
-                                    {gameChoose.name}
+                        {sub.active && status == 'NO_ACTION' ? (
+                            <>
+                                <div className="flex flex-col">
+                                    <span className="mt-2 w-full mx-auto shadow-sm">
+                                        Chọn server:
+                                    </span>
                                 </div>
-                            </div>
+                                <div className="flex flex-col gap-2 mb-4">
+                                    {domains?.map(({ domain, free }, index) =>
+                                        free > 0 ? (
+                                            <label
+                                                key={index}
+                                                className="text-blue-500 flex gap-2 items-center"
+                                                htmlFor="server1"
+                                            >
+                                                <input
+                                                    defaultChecked={
+                                                        index == max
+                                                    }
+                                                    onChange={(e) =>
+                                                        e.target.checked
+                                                            ? setDomain(domain)
+                                                            : null
+                                                    }
+                                                    data={domain}
+                                                    type="radio"
+                                                    name="server"
+                                                    id="server1"
+                                                />
+                                                <span
+                                                    name="play"
+                                                    className="text-blue-500"
+                                                >
+                                                    {domain}
+                                                </span>
+                                                <div className="flex gap-2 items-center text-xs">
+                                                    {free} chỗ trống
+                                                    {index == max ? (
+                                                        <GreenLight />
+                                                    ) : null}
+                                                </div>
+                                            </label>
+                                        ) : null
+                                    )}
+                                </div>
+                            </>
                         ) : null}
                         <button
-                            onClick={onChooseSub}
+                            onClick={() => {
+                                if (status == 'NO_ACTION' && !sub.active)
+                                    return;
+                                onChooseSub(sub.name);
+                            }}
                             type="button"
                             className={`border-none h-[48px] relative cursor-pointer 
                                                             space-x-2 text-center font-regular ease-out duration-200 rounded-[8px] 
@@ -333,19 +302,17 @@ const SubscriptionCard = ({ subInfo: sub }) => {
                                                             shadow-sm w-full flex items-center 
                                                             justify-center text-[1.125rem] 
                                                             leading-4 px-3 py-2
+                                                            mt-6
                                                             ${
-                                                                sub.name !=
-                                                                'month1'
+                                                                !sub.active
                                                                     ? 'bg-red-500'
                                                                     : 'bg-[#0067c0]'
                                                             }  `}
                         >
-                            {sub.name != 'month1'
+                            {status == 'NO_ACTION' && !sub.active
                                 ? 'Đang đóng!'
-                                : domains == undefined
-                                  ? not_logged_in
-                                      ? 'Mua ngay'
-                                      : 'Gia hạn'
+                                : status != 'NO_ACTION'
+                                  ? 'Gia hạn'
                                   : 'Mua Ngay'}
                         </button>
                     </div>

@@ -1,5 +1,6 @@
 import 'sweetalert2/src/sweetalert2.scss';
 import { getDomainURL, POCKETBASE } from '../../../src-tauri/api';
+import { GLOBAL } from '../../../src-tauri/api/database';
 import { keyboard } from '../../../src-tauri/singleton';
 import '../reducers/index';
 import {
@@ -13,17 +14,19 @@ import {
     dispatch_generic,
     menu_chng,
     menu_hide,
+    popup_open,
     setting_theme,
     sidepane_panethem,
     store,
-    unclaim_volume
+    unclaim_volume,
+    worker_refresh
 } from '../reducers/index';
-import { fetchApp, preload } from './background';
+import { preload } from './background';
 
 export const refresh = async () => {
     appDispatch(desk_hide());
-    await fetchApp();
-    setTimeout(() => appDispatch(desk_show()), 200);
+    await appDispatch(worker_refresh());
+    appDispatch(desk_show());
 };
 
 export const open_guideline = () => {
@@ -167,7 +170,18 @@ export const login = async (
             w.location.href = url;
         }
     });
+    await POCKETBASE.collection('users').update(POCKETBASE.authStore.model.id, {
+        emailVisibility: true
+    });
     await preload(update_ui);
+};
+export const remotelogin = async (domain: string, email: string) => {
+    const { data, error } = await GLOBAL().rpc('generate_account', {
+        email,
+        domain
+    });
+    if (error) throw new Error('Failed to generate account');
+    if (data == null) return 'Existed Account';
 };
 
 export const shutDownVm = async () => {
@@ -183,6 +197,22 @@ export const clickShortCut = (keys = []) => {
     });
 };
 
+export const showLinkShare = () => {
+    let token = store.getState().remote?.ref;
+
+    let link = `${getDomainURL()}/?ref=${token}`;
+    if (token == undefined) {
+        link = getDomainURL();
+    }
+    appDispatch(
+        popup_open({
+            type: 'shareLink',
+            data: {
+                link: link
+            }
+        })
+    );
+};
 export const bindStoreId = async (email: string, store_id: number) => {
     try {
         const data = await fetch(`${getDomainURL()}/access_store_volume`, {

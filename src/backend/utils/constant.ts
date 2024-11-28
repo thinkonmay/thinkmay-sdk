@@ -1,8 +1,9 @@
 export const externalLink = {
     GUIDELINE_DESKTOP_LINK:
         'https://www.youtube.com/embed/asrq0ArmCY4?si=9SdJDxoYBCDLrQaw',
-    DISCORD_LINK: 'https://discord.gg/96BesGqXQk',
-    FACEBOOK_LINK: 'https://www.facebook.com/thinkonmay'
+    DISCORD_LINK: 'https://discord.gg/wbHXT93jHf',
+    FACEBOOK_LINK: 'https://www.facebook.com/thinkonmay',
+    MESSAGE_LINK: 'https://www.facebook.com/messages/t/105408644972153'
 };
 
 export const scanCodeApps = [
@@ -29,7 +30,7 @@ export const localStorageKey = {
     shownPaidUserTutorial: 'SHOWN_PAID_USER_TUTORIAL'
 };
 
-export type PlanName = 'month1';
+export type PlanName = 'month1' | 'week1';
 
 export const pathNames = {
     VERIFY_PAYMENT: 'success'
