@@ -86,6 +86,10 @@ export const preload = async () => {
 export const PreloadBackground = async () => {
     try {
         await preload();
+        setInterval(check_worker, 10 * 1000);
+        setInterval(sync, 2 * 1000);
+        setInterval(handleClipboard, 1000);
+        setInterval(ping_session, 1000 * 30);
     } catch (e) {
         UserEvents({
             type: 'preload/rejected',
